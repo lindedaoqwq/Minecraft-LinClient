@@ -110,10 +110,12 @@ jobs:
           git config user.name "github-actions[bot]"
           mkdir -p /tmp/clog
           cp build-logs/build.log /tmp/clog/build.log 2>/dev/null || printf '(no log captured)\n' > /tmp/clog/build.log
-          git branch -D ci-logs 2>/dev/null || true
           git checkout --orphan ci-logs
           git rm -rf --cached . >/dev/null 2>&1 || true
-          rm -rf .[!.]* * 2>/dev/null || true
+          # Remove all working-tree files EXCEPT .git (git clean never touches .git).
+          # NOTE: do NOT use `rm -rf .[!.]* *` — that glob matches `.git` and
+          # deletes the entire repository metadata, breaking the subsequent push.
+          git clean -fdx -e '.git' >/dev/null 2>&1 || true
           cp /tmp/clog/build.log "./build-${GITHUB_RUN_ID}.log"
           git add -A
           git commit -m "build log | run ${GITHUB_RUN_ID} | ref ${GITHUB_REF_NAME} | outcome ${{ steps.gradle.outcome }}" || echo "nothing to commit"
