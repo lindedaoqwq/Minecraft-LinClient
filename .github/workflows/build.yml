@@ -123,12 +123,13 @@ jobs:
         run: |
           git config user.email "actions@github.com"
           git config user.name "github-actions[bot]"
-          cd /tmp
-          rm -rf clogrepo
-          git clone --quiet "https://x-access-token:${TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" clogrepo
-          cd clogrepo
+          rm -rf /tmp/clogrepo
+          git clone --quiet "https://x-access-token:${TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" /tmp/clogrepo
+          cd /tmp/clogrepo
           git checkout ci-logs 2>/dev/null || git checkout --orphan ci-logs
           git rm -rf --cached . >/dev/null 2>&1 || true
+          git clean -fd >/dev/null 2>&1 || true
+          rm -f /tmp/clogrepo/*.log
           cp /tmp/ci-logs-artifacts/*.log ./ 2>/dev/null || printf '(no logs captured)\n' > "build-${GITHUB_RUN_ID}-empty.log"
           git add -A
           git commit -m "build logs | run ${GITHUB_RUN_ID} | ref ${GITHUB_REF_NAME} | outcome ${{ needs.build.result }}" || echo "nothing to commit"
