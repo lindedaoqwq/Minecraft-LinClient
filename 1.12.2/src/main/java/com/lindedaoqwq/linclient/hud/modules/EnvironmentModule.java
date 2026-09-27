@@ -3,12 +3,13 @@ package com.lindedaoqwq.linclient.hud.modules;
 import com.lindedaoqwq.linclient.hud.HudModule;
 import com.lindedaoqwq.linclient.util.Format;
 import com.lindedaoqwq.linclient.util.I18n;
+import com.lindedaoqwq.linclient.state.ClientState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
-import org.lwjgl.opengl.Display;
 
 import java.util.List;
 
@@ -23,7 +24,7 @@ public class EnvironmentModule extends HudModule {
         World w = mc.world;
         if (w == null || mc.player == null) return l;
 
-        l.add(I18n.t("linclient.env.fps", Display.getFPS()));
+        l.add(I18n.t("linclient.env.fps", ClientState.fps));
 
         String ping = "?";
         if (mc.getConnection() != null) {
@@ -39,7 +40,7 @@ public class EnvironmentModule extends HudModule {
 
         l.add(I18n.t("linclient.env.entities", w.loadedEntityList.size()));
 
-        int chunks = w.getChunkProvider().getLoadedChunkCount();
+        int chunks = getLoadedChunkCount(w);
         l.add(I18n.t("linclient.env.chunks", chunks));
 
         BlockPos bp = mc.player.getPosition();
@@ -49,6 +50,29 @@ public class EnvironmentModule extends HudModule {
         l.add(I18n.t("linclient.env.time", formatTime(w.getWorldTime())));
         l.add(I18n.t("linclient.env.light", w.getLight(bp)));
         return l;
+    }
+
+    // Count loaded client chunks without depending on a version-specific API:
+    // 1.8.9 exposes ChunkProviderClient.getLoadedChunkCount(); 1.12.2 stores them in a
+    // private 'chunkMapping' field, so fall back to reflection there.
+    private int getLoadedChunkCount(World w) {
+        Object cp = w.getChunkProvider();
+        if (!(cp instanceof ChunkProviderClient)) return 0;
+        try {
+            return ((Integer) cp.getClass().getMethod("getLoadedChunkCount").invoke(cp)).intValue();
+        } catch (NoSuchMethodException e) {
+            try {
+                java.lang.reflect.Field f = cp.getClass().getDeclaredField("chunkMapping");
+                f.setAccessible(true);
+                Object map = f.get(cp);
+                if (map instanceof java.util.Map) return ((java.util.Map<?, ?>) map).size();
+                return ((Integer) map.getClass().getMethod("size").invoke(map)).intValue();
+            } catch (Exception e2) {
+                return 0;
+            }
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private String formatTime(long t) {

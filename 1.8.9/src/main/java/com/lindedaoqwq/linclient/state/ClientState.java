@@ -57,4 +57,19 @@ public class ClientState {
     private static void prune(ArrayDeque<Long> q, long now) {
         while (!q.isEmpty() && now - q.peekFirst() > 1000L) q.pollFirst();
     }
+
+    // FPS: counted client-side on every rendered frame (no reliance on Minecraft internals).
+    public static int fps = 0;
+    private static int frameCounter = 0;
+    private static long fpsTimestamp = System.currentTimeMillis();
+
+    public static void onFrame() {
+        frameCounter++;
+        long now = System.currentTimeMillis();
+        if (now - fpsTimestamp >= 1000L) {
+            fps = frameCounter;
+            frameCounter = 0;
+            fpsTimestamp = now;
+        }
+    }
 }
