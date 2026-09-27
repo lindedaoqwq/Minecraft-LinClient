@@ -5,6 +5,7 @@ import com.lindedaoqwq.linclient.config.ModConfig;
 import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.I18n;
 import com.lindedaoqwq.linclient.util.RenderUtils;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 
 import java.util.ArrayList;
