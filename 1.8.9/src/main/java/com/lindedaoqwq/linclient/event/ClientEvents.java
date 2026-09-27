@@ -100,8 +100,9 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onMouse(MouseEvent event) {
-        int btn = event.getButton();
-        boolean state = event.isButtonstate();
+        // 1.8.9 exposes MouseEvent values as public final fields (getters only exist in 1.12+).
+        int btn = event.button;
+        boolean state = event.buttonstate;
         if (btn == 0 && state) {
             ClientState.addLeftClick();
             ClientState.leftHeld = true;
@@ -117,8 +118,8 @@ public class ClientEvents {
 
         Minecraft mc = Minecraft.getMinecraft();
         if (ClientState.hudEditMode && mc.currentScreen == null) {
-            int mx = event.getX() * lastW / mc.displayWidth;
-            int my = (mc.displayHeight - event.getY()) * lastH / mc.displayHeight;
+            int mx = event.x * lastW / mc.displayWidth;
+            int my = (mc.displayHeight - event.y) * lastH / mc.displayHeight;
             if (btn == 0 && state) {
                 String id = HudOverlay.hitTest(mx, my);
                 if (id != null) {
@@ -153,6 +154,8 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onOverlayPre(RenderGameOverlayEvent.Pre event) {
+        // Only element types that exist in 1.8.9 (no BOSSINFO / POTION_ICONS / VIGNETTE here,
+        // and the helmet overlay is spelled HELMET in this version).
         RenderGameOverlayEvent.ElementType type = event.type;
         if (ModConfig.hideHealth && type == RenderGameOverlayEvent.ElementType.HEALTH) event.setCanceled(true);
         if (ModConfig.hideArmor && type == RenderGameOverlayEvent.ElementType.ARMOR) event.setCanceled(true);
@@ -162,13 +165,9 @@ public class ClientEvents {
         if (ModConfig.hideExp && (type == RenderGameOverlayEvent.ElementType.EXPERIENCE
                 || type == RenderGameOverlayEvent.ElementType.JUMPBAR)) event.setCanceled(true);
         if (ModConfig.hideCrosshair && type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) event.setCanceled(true);
-        if (ModConfig.hideBoss && (type == RenderGameOverlayEvent.ElementType.BOSSHEALTH
-                || type == RenderGameOverlayEvent.ElementType.BOSSINFO)) event.setCanceled(true);
-        if (ModConfig.hidePotion && type == RenderGameOverlayEvent.ElementType.POTION_ICONS) event.setCanceled(true);
-        if (ModConfig.hideVignette && type == RenderGameOverlayEvent.ElementType.VIGNETTE) event.setCanceled(true);
+        if (ModConfig.hideBoss && type == RenderGameOverlayEvent.ElementType.BOSSHEALTH) event.setCanceled(true);
         if (ModConfig.hidePortal && type == RenderGameOverlayEvent.ElementType.PORTAL) event.setCanceled(true);
-        if (ModConfig.hideHelmet && type == RenderGameOverlayEvent.ElementType.HELMENT) event.setCanceled(true);
-        if (ModConfig.hideJumpbar && type == RenderGameOverlayEvent.ElementType.JUMPBAR) event.setCanceled(true);
+        if (ModConfig.hideHelmet && type == RenderGameOverlayEvent.ElementType.HELMET) event.setCanceled(true);
     }
 
     @SubscribeEvent

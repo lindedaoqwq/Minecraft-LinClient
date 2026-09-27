@@ -36,8 +36,7 @@ public class ClickGuiScreen extends GuiScreen {
             new VanillaEntry("hideExp", "linclient.vanilla.exp"),
             new VanillaEntry("hideCrosshair", "linclient.vanilla.crosshair"),
             new VanillaEntry("hideBoss", "linclient.vanilla.boss"),
-            new VanillaEntry("hidePotion", "linclient.vanilla.potion"),
-            new VanillaEntry("hideVignette", "linclient.vanilla.vignette"),
+            // hidePotion / hideVignette have no ElementType in 1.8.9, so they are not listed here.
             new VanillaEntry("hidePortal", "linclient.vanilla.portal"),
             new VanillaEntry("hideHelmet", "linclient.vanilla.helmet"),
             new VanillaEntry("hideJumpbar", "linclient.vanilla.jumpbar"),

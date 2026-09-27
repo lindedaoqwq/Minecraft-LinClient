@@ -45,7 +45,7 @@ public abstract class HudModule {
     }
 
     public int contentWidth(Minecraft mc) {
-        FontRenderer fr = mc.fontRenderer;
+        FontRenderer fr = mc.fontRendererObj;
         int maxW = fr.getStringWidth(I18n.t(titleKey));
         List<String> lns = getLines(mc);
         for (String l : lns) maxW = Math.max(maxW, fr.getStringWidth(l));
@@ -65,7 +65,7 @@ public abstract class HudModule {
 
     public final void render(Minecraft mc) {
         if (!isEnabled()) return;
-        FontRenderer fr = mc.fontRenderer;
+        FontRenderer fr = mc.fontRendererObj;
         Rect r = rect(mc);
         RenderUtils.drawRect(r.x, r.y, r.w, r.h, RenderUtils.withAlpha(0x000000, 0.35f));
         fr.drawString(I18n.t(titleKey), r.x + PAD, r.y + 2, color);

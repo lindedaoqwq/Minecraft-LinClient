@@ -29,7 +29,7 @@ public class InputModule extends HudModule {
 
     @Override
     public int contentWidth(Minecraft mc) {
-        FontRenderer fr = mc.fontRenderer;
+        FontRenderer fr = mc.fontRendererObj;
         String l1 = I18n.t("linclient.input.cpsL", 0);
         String l2 = I18n.t("linclient.input.cpsR", 0);
         int cpsW = Math.max(fr.getStringWidth(l1), fr.getStringWidth(l2)) + 8;

@@ -88,7 +88,7 @@ public class ClientEvents {
             boolean flying = mc.player.capabilities.isFlying;
             want = fwd && !sneak && !flying;
         }
-        KeyBinding.setKeyBindState(sprint.getKey(), want);
+        KeyBinding.setKeyBindState(sprint.getKeyCode(), want);
     }
 
     @SubscribeEvent
