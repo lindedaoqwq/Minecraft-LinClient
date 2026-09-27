@@ -1,0 +1,27 @@
+# Gradle / build
+.gradle/
+build/
+run/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+eclipse/
+*.launch
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+crash-reports/
+logs/
+
+# Local config (optional, keep layout in repo)
+# config/
