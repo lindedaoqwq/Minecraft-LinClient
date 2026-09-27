@@ -1,7 +1,6 @@
 package com.lindedaoqwq.linclient.hud;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
-import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.I18n;
 import com.lindedaoqwq.linclient.util.RenderUtils;
 import com.lindedaoqwq.linclient.util.Rect;
@@ -14,15 +13,14 @@ import java.util.List;
  * Base class for every HUD information module.
  *
  * Subclasses implement {@link #getLines(Minecraft)} returning the text lines to draw. Position is
- * stored per module (x/y) and can be dragged in-game when ClientState.hudEditMode is on. The config
- * menu toggles module visibility.
+ * stored per module (x/y) and is edited inside the dedicated HUD layout editor screen. The ClickGUI
+ * toggles module visibility.
  */
 public abstract class HudModule {
     public final String id;
     public final String titleKey;
     public final int color;
     public int posX = 4, posY = 4;
-    public boolean dragging = false;
 
     protected HudModule(String id, String titleKey, int color) {
         this.id = id;
@@ -64,18 +62,19 @@ public abstract class HudModule {
     }
 
     public final void render(Minecraft mc) {
-        if (!isEnabled()) return;
+        render(mc, false);
+    }
+
+    /** Renders the module; when {@code force} is true, disabled modules are dimmed instead of skipped (HUD editor). */
+    public void render(Minecraft mc, boolean force) {
+        if (!isEnabled() && !force) return;
         FontRenderer fr = mc.fontRendererObj;
         Rect r = rect(mc);
         RenderUtils.drawRect(r.x, r.y, r.w, r.h, RenderUtils.withAlpha(0x000000, 0.35f));
         fr.drawString(I18n.t(titleKey), r.x + PAD, r.y + 2, color);
         drawContent(mc, fr, r.x + PAD, r.y + TITLE_H, r.w - PAD * 2, r.h - TITLE_H - PAD);
-        if (ClientState.hudEditMode) {
-            int bc = dragging ? 0xFF55FF55 : 0xFFAAAAAA;
-            RenderUtils.drawRect(r.x, r.y, r.w, 1, bc);
-            RenderUtils.drawRect(r.x, r.y + r.h - 1, r.w, 1, bc);
-            RenderUtils.drawRect(r.x, r.y, 1, r.h, bc);
-            RenderUtils.drawRect(r.x + r.w - 1, r.y, 1, r.h, bc);
+        if (!isEnabled()) {
+            RenderUtils.drawRect(r.x, r.y, r.w, r.h, 0x55000000);
         }
     }
 

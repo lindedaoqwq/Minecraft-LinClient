@@ -122,3 +122,9 @@ linclient.vanilla.jumpbar=Jump bar
 linclient.input.lmb=LMB
 linclient.input.rmb=RMB
 linclient.input.space=SPACE
+
+linclient.gui.hudhint.title=HUD Layout Editor
+linclient.gui.hudhint.tip=Hold left click and drag modules to move them
+linclient.gui.hudhint.esc=ESC to save & exit
+linclient.gui.hudhint.bottom=Dimmed modules are currently disabled
+linclient.gui.home.tip=Right Shift: settings  |  F8: this page  |  ESC: close

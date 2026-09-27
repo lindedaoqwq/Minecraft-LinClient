@@ -49,9 +49,10 @@
 > 说明：早期计划中的「隐藏天气」开关已移除——1.8.9 / 1.12.2 没有可靠的**纯客户端**天气抑制 API，强行实现要么需要 coremod（有作弊嫌疑），要么行为不可靠，因此舍去以守住「非外挂、可干净构建」的底线。
 
 ### 界面与配置
-- **ClickGUI（游戏内配置）**：游戏中按 **右 Shift（Right Shift）** 打开。左侧分类 `modules` / `vanilla` / `settings`，右侧逐项开关；并提供「语言切换」「HUD 布局（进入拖动编辑）」「打开主页面」「关闭」按钮。再次按右 Shift 可退出 HUD 拖动编辑并回到 ClickGUI。
-- **主页面（Home）**：按 **F8** 或从标题界面（主菜单）的 `LinClient` 按钮打开。展示品牌标题、实时 FPS、各模块总开关、自动疾跑，以及「打开设置 / HUD 布局 / 语言 / 关闭」快捷入口。
-- **HUD 拖动布局**：在 ClickGUI / 主页面点「HUD 布局」进入编辑模式，直接在游戏画面上拖动各 HUD 模块到任意位置，松手即保存。
+- **ClickGUI（游戏内配置）**：游戏中按 **右 Shift（Right Shift）** 打开。左侧分类 `modules` / `vanilla` / `settings`，右侧逐项开关（原版开关为两列布局）；并提供「语言切换」「HUD 布局」「关闭」按钮。
+- **主页面（Home）**：按 **F8** 或从标题界面（主菜单）的 `LinClient` 按钮打开。深蓝科技风背景，面板内含品牌标题、实时 FPS、两列模块开关卡片（ClickGUI 同款样式）与「打开设置 / HUD 布局 / 语言 / 关闭」四个面板风按钮（悬停高亮）。
+- **HUD 布局编辑器（HudEditorScreen）**：从 ClickGUI 或主页面点「HUD 布局」进入**专用编辑界面**——所有模块（含已禁用的半透明显示）直接呈现在屏幕上，按住左键拖动即可移动，拖动中的模块有高亮描边；**ESC 保存位置并退出**，全程无需离开界面。
+- **统一 UI 逻辑**：任何界面按 `ESC` 即保存并回到游戏；界面间跳转一律整体切换，不会叠加；右 Shift 随时打开 ClickGUI。
 - **暂停 / 设置菜单入口**：游戏内暂停菜单（Esc）与设置页（Options）底部新增 `LinClient` 按钮，一键进入 ClickGUI。
 - **自动疾跑（Auto Sprint）**：在 `settings` 分类或主页面开启后，向前移动时自动疾跑（复用原版疾跑键状态，非加速外挂）。
 - **运行时中英切换**：ClickGUI / 主页面内一键切换 `zh_CN` / `en_US`，即时生效，无需重启游戏。
@@ -77,7 +78,8 @@ Minecraft-LinClient/
 │       │   │   └── KeyBindings.java           # 快捷键（右Shift 开 ClickGUI / F8 开主页面 / H 切 HUD）
 │       │   ├── gui/
 │       │   │   ├── ClickGuiScreen.java        # 游戏内 ClickGUI 配置界面
-│       │   │   └── HomeScreen.java            # 独立主页面
+│       │   │   ├── HudEditorScreen.java       # HUD 布局编辑器（拖动/ESC 保存）
+│       │   │   └── HomeScreen.java            # 独立主页面（蓝色主题）
 │       │   ├── hud/
 │       │   │   ├── HudModule.java             # 模块基类（渲染/布局/拖动）
 │       │   │   ├── HudOverlay.java            # 模块调度与渲染 + 命中测试
@@ -142,9 +144,9 @@ cd 1.8.9
 ### ClickGUI 操作
 打开后（左侧分类，右侧开关/按钮）：
 - `modules`：逐项开关 7 个 HUD 模块（`linclient.module.*`）。
-- `vanilla`：逐项隐藏原版 HUD 元素（血量 / 护甲 / 饱食 / 氧气 / 快捷栏 / 经验 / 准星 / Boss / 药水 / 暗角 / 传送门 / 头盔 / 跳跃条）。
-- `settings`：自动疾跑等开关，以及「语言切换 / HUD 布局 / 打开主页面 / 关闭」按钮。
-- 点「HUD 布局」进入拖动编辑，在游戏画面直接拖动模块，松手保存；再按右 Shift 退出编辑回到 ClickGUI。
+- `vanilla`：两列排布，逐项隐藏原版 HUD 元素（血量 / 护甲 / 饱食 / 氧气 / 快捷栏 / 经验 / 准星 / Boss / 药水 / 暗角 / 传送门 / 头盔 / 跳跃条）。
+- `settings`：自动疾跑等开关，以及「语言切换 / HUD 布局 / 关闭」按钮。
+- 点「HUD 布局」打开专用编辑器：拖动模块，`ESC` 保存退出。
 - 所有改动实时生效并写入 `config/linclient.cfg`。
 
 ---

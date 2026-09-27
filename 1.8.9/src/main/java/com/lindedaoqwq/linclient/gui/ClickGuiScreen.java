@@ -1,12 +1,10 @@
 package com.lindedaoqwq.linclient.gui;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
-import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.I18n;
 import com.lindedaoqwq.linclient.util.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.settings.KeyBinding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +104,6 @@ public class ClickGuiScreen extends GuiScreen {
         switch (code) {
             case 200: return I18n.t("linclient.gui.language") + ": " + (I18n.getLang().equals("zh_CN") ? "中文" : "EN");
             case 201: return I18n.t("linclient.gui.hudlayout");
-            case 202: return I18n.t("linclient.gui.openhome");
             case 203: return I18n.t("linclient.gui.close");
             default: return "";
         }
@@ -133,18 +130,21 @@ public class ClickGuiScreen extends GuiScreen {
                 y += rowH + 4;
             }
         } else if (selected == 1) {
-            for (VanillaEntry e : VANILLA) {
-                regions.add(new Region(px + 10, y, pw - 20, rowH, K_TOGGLE_VANILLA, e.key, 0));
-                y += rowH + 4;
+            // Two columns so all vanilla entries fit on screen.
+            int colW = (pw - 20 - 8) / 2;
+            int half = (VANILLA.length + 1) / 2;
+            for (int i = 0; i < VANILLA.length; i++) {
+                int col = i / half, row = i % half;
+                regions.add(new Region(px + 10 + col * (colW + 8), y + row * (rowH + 4), colW, rowH,
+                        K_TOGGLE_VANILLA, VANILLA[i].key, 0));
             }
+            y += half * (rowH + 4);
         } else {
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_TOGGLE_GENERAL, "autoSprint", 0));
             y += rowH + 4;
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 200));
             y += rowH + 4;
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 201));
-            y += rowH + 4;
-            regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 202));
             y += rowH + 4;
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 203));
             y += rowH + 4;
@@ -185,11 +185,7 @@ public class ClickGuiScreen extends GuiScreen {
                         ModConfig.setLanguage(I18n.getLang().equals("zh_CN") ? "en_US" : "zh_CN");
                         break;
                     case 201:
-                        mc.displayGuiScreen(null);
-                        ClientState.hudEditMode = true;
-                        break;
-                    case 202:
-                        mc.displayGuiScreen(new HomeScreen());
+                        mc.displayGuiScreen(new HudEditorScreen());
                         break;
                     case 203:
                         mc.displayGuiScreen(null);

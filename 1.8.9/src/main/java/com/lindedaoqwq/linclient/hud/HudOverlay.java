@@ -40,9 +40,14 @@ public final class HudOverlay {
     }
 
     public static String hitTest(int mx, int my) {
+        return hitTest(mx, my, false);
+    }
+
+    /** Hit-test modules; when {@code all} is true disabled modules are included (HUD editor). */
+    public static String hitTest(int mx, int my, boolean all) {
         for (int i = MODULES.size() - 1; i >= 0; i--) {
             HudModule m = MODULES.get(i);
-            if (m.isEnabled() && m.contains(mx, my)) return m.id;
+            if ((all || m.isEnabled()) && m.contains(mx, my)) return m.id;
         }
         return null;
     }
@@ -51,6 +56,13 @@ public final class HudOverlay {
         if (mc.thePlayer == null || mc.theWorld == null) return;
         for (HudModule m : MODULES) {
             m.render(mc);
+        }
+    }
+
+    /** Renders every module including disabled ones (dimmed), used by the HUD layout editor. */
+    public static void renderAll(Minecraft mc) {
+        for (HudModule m : MODULES) {
+            m.render(mc, true);
         }
     }
 }

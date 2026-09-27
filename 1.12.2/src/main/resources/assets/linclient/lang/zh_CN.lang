@@ -122,3 +122,9 @@ linclient.vanilla.jumpbar=跳跃条
 linclient.input.lmb=左键
 linclient.input.rmb=右键
 linclient.input.space=空格
+
+linclient.gui.hudhint.title=HUD 布局编辑
+linclient.gui.hudhint.tip=按住左键拖动模块调整位置
+linclient.gui.hudhint.esc=ESC 保存并退出
+linclient.gui.hudhint.bottom=半透明变暗的模块当前处于关闭状态
+linclient.gui.home.tip=右 Shift 打开设置  |  F8 打开本页  |  ESC 关闭

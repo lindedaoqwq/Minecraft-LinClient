@@ -12,7 +12,6 @@ import java.util.ArrayDeque;
 public class ClientState {
     public static boolean modActive = true;
     public static boolean hudEnabled = true;
-    public static boolean hudEditMode = false;
 
     // Movement
     public static double speed = 0.0;        // blocks / second
@@ -49,10 +48,6 @@ public class ClientState {
     private static boolean fpsReflectionReady = false;
     private static int frameCounter = 0;
     private static long fpsTimestamp = System.currentTimeMillis();
-
-    // HUD drag state
-    public static String draggingId = null;
-    public static int dragOffsetX = 0, dragOffsetY = 0;
 
     public static void refreshFps(Minecraft mc) {
         if (!fpsReflectionReady) {
