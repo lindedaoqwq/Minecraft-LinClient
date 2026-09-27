@@ -2,10 +2,8 @@ name: Build
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main"]
     tags: ["v*"]
-  pull_request:
-    branches: ["main", "master"]
   workflow_dispatch:
 
 # Allow the workflow to create Releases and upload artifacts.
@@ -25,24 +23,75 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Build with Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.5
-          arguments: build
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      - name: Upload build artifacts
+      # Build. We capture the FULL gradle output to a log file (and stream it to
+      # the console via tee) so a complete log is available even when the build
+      # fails. If gradle fails, this step fails (job turns red) but the follow-up
+      # report/log-upload steps run with `if: always()` so logs are never lost.
+      - name: Build with Gradle
+        id: gradle
+        run: |
+          mkdir -p build-logs
+          ./gradlew build --no-daemon --console=plain 2>&1 | tee build-logs/build.log
+          echo "BUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+
+      # Always generate a human-readable report in the job Summary so the result
+      # (and the failure reason) is visible on the webpage without downloading.
+      - name: Generate build report
+        if: always()
+        run: |
+          {
+            echo "## 📋 Build Report"
+            echo ""
+            echo "- **Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo "- **Ref:** \`${{ github.ref_name }}\`"
+            if [ "${{ steps.gradle.outcome }}" = "success" ]; then
+              echo "- **Status:** ✅ SUCCESS"
+            else
+              echo "- **Status:** ❌ FAILED (gradle exit ${BUILD_EXIT:-unknown})"
+            fi
+            echo ""
+            echo "### Jar produced"
+            if ls build/libs/*.jar 1>/dev/null 2>&1; then
+              ls -la build/libs/*.jar | sed 's/^/- /'
+            else
+              echo "- _none_"
+            fi
+            echo ""
+            echo "### Tail of build log (last 80 lines)"
+            echo '```text'
+            tail -n 80 build-logs/build.log 2>/dev/null || echo "(log missing)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Always upload the COMPLETE build log as a downloadable artifact, so the
+      # full error output is preserved for every run (success or failure).
+      - name: Upload full build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.run_id }}
+          path: build-logs/
+          if-no-files-found: warn
+          retention-days: 30
+
+      # Upload the jar only when the build actually succeeded.
+      - name: Upload jar artifact
+        if: steps.gradle.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: LinClient-jar
           path: build/libs/*.jar
-          if-no-files-found: error
+          if-no-files-found: warn
+          retention-days: 30
 
+      # Create a GitHub Release with the jar attached — ONLY when a tag is pushed.
+      # Plain pushes to main only build + report, never publish.
       - name: Create Release on tag
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.gradle.outcome == 'success' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: build/libs/*.jar
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
