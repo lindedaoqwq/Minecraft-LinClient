@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.common.config.Configuration;
 import org.lwjgl.input.Keyboard;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -94,7 +95,7 @@ public class ConfigMenuScreen extends GuiScreen {
     }
 
     @Override
-    protected void keyTyped(char typedChar, int keyCode) {
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
         if (keyCode == Keyboard.KEY_ESCAPE) {
             ModConfig.save();
             Minecraft.getMinecraft().displayGuiScreen(null);
