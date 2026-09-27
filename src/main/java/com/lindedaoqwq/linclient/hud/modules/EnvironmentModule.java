@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.biome.Biome;
 
 import java.time.LocalTime;
@@ -65,7 +66,10 @@ public class EnvironmentModule extends HudModule {
         long totalMB = rt.maxMemory() / (1024L * 1024L);
         lines.add(I18n.t("linclient.env.memory", usedMB, totalMB));
 
-        int entities = mc.level.entitiesForRendering().size();
+        int entities = 0;
+        for (Entity ignored : mc.level.entitiesForRendering()) {
+            entities++;
+        }
         lines.add(I18n.t("linclient.env.entities", entities));
 
         int chunks = ((ClientChunkCache) mc.level.getChunkSource()).getLoadedChunksCount();
