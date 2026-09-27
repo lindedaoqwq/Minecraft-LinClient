@@ -97,9 +97,9 @@ jobs:
           generate_release_notes: true
 
       # Mirror the full build log to a standalone `ci-logs` branch so the log is
-      # also retrievable via plain git (no API needed). This runs in its own
-      # worktree so it never disturbs the build artifacts. Non-fatal: if it fails
-      # for any reason, the build result and the main log artifact are untouched.
+      # also retrievable via plain git (no API needed). Uses an orphan branch so
+      # it never disturbs the build history. Non-fatal: if it fails for any
+      # reason, the build result and the main log artifact are untouched.
       - name: Mirror log to ci-logs branch
         if: always()
         continue-on-error: true
@@ -110,12 +110,12 @@ jobs:
           git config user.name "github-actions[bot]"
           mkdir -p /tmp/clog
           cp build-logs/build.log /tmp/clog/build.log 2>/dev/null || printf '(no log captured)\n' > /tmp/clog/build.log
-          git worktree add --orphan /tmp/clog-wt ci-logs 2>/dev/null || git worktree add -B ci-logs /tmp/clog-wt 2>/dev/null
-          cd /tmp/clog-wt
-          rm -rf .[!.]* * 2>/dev/null
+          git branch -D ci-logs 2>/dev/null || true
+          git checkout --orphan ci-logs
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          rm -rf .[!.]* * 2>/dev/null || true
           cp /tmp/clog/build.log "./build-${GITHUB_RUN_ID}.log"
           git add -A
           git commit -m "build log | run ${GITHUB_RUN_ID} | ref ${GITHUB_REF_NAME} | outcome ${{ steps.gradle.outcome }}" || echo "nothing to commit"
           git push --force "https://x-access-token:${TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" HEAD:refs/heads/ci-logs
-          cd "$GITHUB_WORKSPACE"
-          git worktree remove /tmp/clog-wt --force 2>/dev/null || true
+          git checkout -f "${GITHUB_SHA}" 2>/dev/null || true
