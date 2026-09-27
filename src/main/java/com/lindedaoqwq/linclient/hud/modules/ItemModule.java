@@ -21,7 +21,7 @@ public class ItemModule extends HudModule {
     }
 
     private static int pct(ItemStack s) {
-        int max = s.getMaxDamageValue();
+        int max = s.getMaxDamage();
         if (max <= 0) return 100;
         return (int) ((1.0 - s.getDamageValue() / (double) max) * 100.0);
     }
@@ -39,7 +39,7 @@ public class ItemModule extends HudModule {
 
         ItemStack mh = mc.player.getMainHandItem();
         if (!mh.isEmpty() && mh.isDamageableItem()) {
-            lines.add(I18n.t("linclient.item.tool", mh.getHoverName().getString(), pct(mh), mh.getMaxDamageValue() - mh.getDamageValue()));
+            lines.add(I18n.t("linclient.item.tool", mh.getHoverName().getString(), pct(mh), mh.getMaxDamage() - mh.getDamageValue()));
         }
 
         int arrows = mc.player.getInventory().countItem(Items.ARROW)
@@ -67,7 +67,7 @@ public class ItemModule extends HudModule {
 
         if (mc.level != null) {
             List<ItemEntity> drops = new ArrayList<>();
-            for (Entity e : mc.level.getEntities().getAll()) {
+            for (Entity e : mc.level.entitiesForRendering()) {
                 if (e instanceof ItemEntity ie) drops.add(ie);
             }
             drops.sort(Comparator.comparingDouble(e -> e.distanceToSqr(mc.player)));

@@ -28,7 +28,6 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue DISABLE_CLOUDS;
     public static final ForgeConfigSpec.BooleanValue DISABLE_FIRE_OVERLAY;
     public static final ForgeConfigSpec.BooleanValue DISABLE_WATER_OVERLAY;
-    public static final ForgeConfigSpec.BooleanValue DISABLE_LAVA_OVERLAY;
     public static final ForgeConfigSpec.BooleanValue DISABLE_PORTAL_OVERLAY;
 
     // ---- Performance (client only) ----
@@ -65,7 +64,6 @@ public class ModConfig {
         DISABLE_CLOUDS = BUILDER.comment("Hide clouds.").define("disableClouds", false);
         DISABLE_FIRE_OVERLAY = BUILDER.comment("Hide the fire screen overlay.").define("disableFireOverlay", false);
         DISABLE_WATER_OVERLAY = BUILDER.comment("Hide the water screen overlay.").define("disableWaterOverlay", false);
-        DISABLE_LAVA_OVERLAY = BUILDER.comment("Hide the lava screen overlay.").define("disableLavaOverlay", false);
         DISABLE_PORTAL_OVERLAY = BUILDER.comment("Hide the portal overlay (needs a coremod; reserved switch).")
                 .define("disablePortalOverlay", false);
         BUILDER.pop();

@@ -3,7 +3,7 @@ package com.lindedaoqwq.linclient.hud.modules;
 import com.lindedaoqwq.linclient.hud.HudModule;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.BossHealthOverlay;
+import net.minecraft.client.gui.components.BossHealthOverlay;
 import net.minecraft.world.BossEvent;
 
 import java.lang.reflect.Field;

@@ -11,7 +11,7 @@ import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.InputEvent;
@@ -95,7 +95,6 @@ public class ClientEvents {
         RenderBlockScreenEffectEvent.OverlayType t = event.getOverlayType();
         if (t == RenderBlockScreenEffectEvent.OverlayType.FIRE && ModConfig.DISABLE_FIRE_OVERLAY.get()) event.setCanceled(true);
         if (t == RenderBlockScreenEffectEvent.OverlayType.WATER && ModConfig.DISABLE_WATER_OVERLAY.get()) event.setCanceled(true);
-        if (t == RenderBlockScreenEffectEvent.OverlayType.LAVA && ModConfig.DISABLE_LAVA_OVERLAY.get()) event.setCanceled(true);
     }
 
     private void updateClientState(Minecraft mc) {
@@ -163,15 +162,15 @@ public class ClientEvents {
             fullbrightActive = false;
         }
 
-        // Clouds
+        // Clouds (Options.renderClouds is a public CloudStatus field in 1.20.1)
         if (ModConfig.DISABLE_CLOUDS.get()) {
             if (!cloudsOff) {
-                origClouds = mc.options.renderClouds().get();
+                origClouds = mc.options.renderClouds;
                 cloudsOff = true;
             }
-            mc.options.renderClouds().set(CloudStatus.OFF);
+            mc.options.renderClouds = CloudStatus.OFF;
         } else if (cloudsOff) {
-            mc.options.renderClouds().set(origClouds);
+            mc.options.renderClouds = origClouds;
             cloudsOff = false;
         }
 

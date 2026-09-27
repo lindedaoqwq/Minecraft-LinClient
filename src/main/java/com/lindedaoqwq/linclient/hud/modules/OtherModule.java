@@ -5,7 +5,7 @@ import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.Format;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 import java.util.List;

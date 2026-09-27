@@ -35,7 +35,7 @@ public class CombatModule extends HudModule {
         LivingEntity best = null;
         double bestDot = 0.97;
 
-        for (Entity e : mc.level.getEntities().getAll()) {
+        for (Entity e : mc.level.entitiesForRendering()) {
             if (!(e instanceof LivingEntity le) || e == p) continue;
             if (p.distanceTo(e) > reach) continue;
             AABB box = e.getBoundingBox();

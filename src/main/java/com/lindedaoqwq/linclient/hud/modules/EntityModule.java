@@ -29,7 +29,7 @@ public class EntityModule extends HudModule {
 
         List<Player> players = new ArrayList<>();
         List<LivingEntity> mobs = new ArrayList<>();
-        for (Entity e : mc.level.getEntities().getAll()) {
+        for (Entity e : mc.level.entitiesForRendering()) {
             if (e instanceof Player p) {
                 if (p != mc.player) players.add(p);
             } else if (e instanceof LivingEntity le) {

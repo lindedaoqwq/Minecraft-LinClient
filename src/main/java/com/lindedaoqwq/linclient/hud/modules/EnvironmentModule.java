@@ -7,9 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 
 import java.time.LocalTime;
@@ -37,8 +37,8 @@ public class EnvironmentModule extends HudModule {
         String compass = dirs[(int) Math.round(yaw / 90.0) % 4];
         lines.add(I18n.t("linclient.env.facing", compass, (int) yaw));
 
-        Biome biome = mc.level.getBiome(pos).value();
-        ResourceLocation rl = BuiltInRegistries.BIOME.getKey(biome);
+        Holder<Biome> biomeHolder = mc.level.getBiome(pos);
+        ResourceLocation rl = biomeHolder.unwrapKey().map(ResourceKey::location).orElse(null);
         lines.add(I18n.t("linclient.env.biome", rl == null ? "unknown" : rl.getPath()));
 
         int light = mc.level.getLightEngine().getRawBrightness(pos, 0);
@@ -65,7 +65,7 @@ public class EnvironmentModule extends HudModule {
         long totalMB = rt.maxMemory() / (1024L * 1024L);
         lines.add(I18n.t("linclient.env.memory", usedMB, totalMB));
 
-        int entities = mc.level.getEntities().getAll().size();
+        int entities = mc.level.entitiesForRendering().size();
         lines.add(I18n.t("linclient.env.entities", entities));
 
         int chunks = ((ClientChunkCache) mc.level.getChunkSource()).getLoadedChunksCount();
