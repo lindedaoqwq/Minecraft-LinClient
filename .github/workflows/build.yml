@@ -91,12 +91,15 @@ jobs:
           retention-days: 30
 
       # Upload the jar only when the build actually succeeded.
+      # NOTE: `uses:` actions resolve `path` relative to the repo root, NOT the
+      # job's working-directory (which is the per-version subdir). So we must
+      # prefix with ${{ matrix.dir }}.
       - name: Upload jar artifact
         if: steps.gradle.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: LinClient-${{ matrix.mc }}-jar
-          path: build/libs/*.jar
+          path: ${{ matrix.dir }}/build/libs/*.jar
           if-no-files-found: warn
           retention-days: 30
 
