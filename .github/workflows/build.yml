@@ -6,22 +6,33 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
-# Allow the workflow to create Releases and upload artifacts.
+# Allow the workflow to create Releases, upload artifacts, and push the ci-logs branch.
 permissions:
   contents: write
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mc: "1.12.2"
+            dir: "1.12.2"
+          - mc: "1.8.9"
+            dir: "1.8.9"
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 8
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 8
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -30,11 +41,13 @@ jobs:
       # the console via tee) so a complete log is available even when the build
       # fails. If gradle fails, this step fails (job turns red) but the follow-up
       # report/log-upload steps run with `if: always()` so logs are never lost.
+      # Each version uses its own Gradle Wrapper (Gradle 4.9 for 1.12.2,
+      # Gradle 2.14.1 for 1.8.9) pinned via ForgeGradle 2.x.
       - name: Build with Gradle
         id: gradle
         run: |
-          mkdir -p build-logs
-          ./gradlew build --no-daemon --console=plain 2>&1 | tee build-logs/build.log
+          mkdir -p /tmp/linclient-logs
+          ./gradlew build --no-daemon --console=plain 2>&1 | tee "/tmp/linclient-logs/build-${{ matrix.mc }}.log"
           echo "BUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
 
       # Always generate a human-readable report in the job Summary so the result
@@ -43,7 +56,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "## 📋 Build Report"
+            echo "## 📋 Build Report — MC ${{ matrix.mc }}"
             echo ""
             echo "- **Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             echo "- **Ref:** \`${{ github.ref_name }}\`"
@@ -62,7 +75,7 @@ jobs:
             echo ""
             echo "### Tail of build log (last 80 lines)"
             echo '```text'
-            tail -n 80 build-logs/build.log 2>/dev/null || echo "(log missing)"
+            tail -n 80 "/tmp/linclient-logs/build-${{ matrix.mc }}.log" 2>/dev/null || echo "(log missing)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -72,8 +85,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-${{ github.run_id }}
-          path: build-logs/
+          name: build-log-${{ matrix.mc }}
+          path: /tmp/linclient-logs/build-${{ matrix.mc }}.log
           if-no-files-found: warn
           retention-days: 30
 
@@ -82,42 +95,61 @@ jobs:
         if: steps.gradle.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: LinClient-jar
+          name: LinClient-${{ matrix.mc }}-jar
           path: build/libs/*.jar
           if-no-files-found: warn
           retention-days: 30
 
-      # Create a GitHub Release with the jar attached — ONLY when a tag is pushed.
-      # Plain pushes to main only build + report, never publish.
-      - name: Create Release on tag
-        if: steps.gradle.outcome == 'success' && startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+  # Mirror BOTH build logs to a standalone `ci-logs` branch so the logs are also
+  # retrievable via plain git (no API needed). Runs after all builds (so parallel
+  # pushes from the two matrix jobs don't clobber each other) and is non-fatal:
+  # if it fails for any reason, the artifacts above already hold the logs.
+  ci-logs:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build logs
+        uses: actions/download-artifact@v4
         with:
-          files: build/libs/*.jar
-          generate_release_notes: true
+          pattern: build-log-*
+          path: /tmp/ci-logs-artifacts
+          merge-multiple: true
 
-      # Mirror the full build log to a standalone `ci-logs` branch so the log is
-      # also retrievable via plain git (no API needed). Uses an orphan branch so
-      # it never disturbs the build history. Non-fatal: if it fails for any
-      # reason, the build result and the main log artifact are untouched.
-      - name: Mirror log to ci-logs branch
-        if: always()
+      - name: Mirror logs to ci-logs branch
         continue-on-error: true
         env:
           TOKEN: ${{ github.token }}
         run: |
           git config user.email "actions@github.com"
           git config user.name "github-actions[bot]"
-          mkdir -p /tmp/clog
-          cp build-logs/build.log /tmp/clog/build.log 2>/dev/null || printf '(no log captured)\n' > /tmp/clog/build.log
-          git checkout --orphan ci-logs
+          cd /tmp
+          rm -rf clogrepo
+          git clone --quiet "https://x-access-token:${TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" clogrepo
+          cd clogrepo
+          git checkout ci-logs 2>/dev/null || git checkout --orphan ci-logs
           git rm -rf --cached . >/dev/null 2>&1 || true
-          # Remove all working-tree files EXCEPT .git (git clean never touches .git).
-          # NOTE: do NOT use `rm -rf .[!.]* *` — that glob matches `.git` and
-          # deletes the entire repository metadata, breaking the subsequent push.
-          git clean -fdx -e '.git' >/dev/null 2>&1 || true
-          cp /tmp/clog/build.log "./build-${GITHUB_RUN_ID}.log"
+          cp /tmp/ci-logs-artifacts/*.log ./ 2>/dev/null || printf '(no logs captured)\n' > "build-${GITHUB_RUN_ID}-empty.log"
           git add -A
-          git commit -m "build log | run ${GITHUB_RUN_ID} | ref ${GITHUB_REF_NAME} | outcome ${{ steps.gradle.outcome }}" || echo "nothing to commit"
+          git commit -m "build logs | run ${GITHUB_RUN_ID} | ref ${GITHUB_REF_NAME} | outcome ${{ needs.build.result }}" || echo "nothing to commit"
           git push --force "https://x-access-token:${TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" HEAD:refs/heads/ci-logs
-          git checkout -f "${GITHUB_SHA}" 2>/dev/null || true
+
+  # Create a GitHub Release with BOTH jars attached — ONLY when a tag is pushed.
+  # Plain pushes to main only build + report, never publish.
+  release:
+    needs: build
+    if: needs.build.result == 'success' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both jar artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: LinClient-*-jar
+          path: /tmp/release-jars
+          merge-multiple: true
+
+      - name: Create Release on tag
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /tmp/release-jars/*.jar
+          generate_release_notes: true

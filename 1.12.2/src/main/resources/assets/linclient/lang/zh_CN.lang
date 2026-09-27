@@ -1,0 +1,85 @@
+key.categories.linclient=LinClient
+key.linclient.openConfig=打开配置菜单（右 Shift）
+key.linclient.toggleHud=切换 HUD
+key.linclient.toggleMod=切换 LinClient
+
+linclient.config.title=LinClient 配置
+linclient.config.hint=右键 Shift 打开 / ESC 关闭 - 更改即时保存
+linclient.config.enableMod=启用 LinClient
+linclient.config.showHud=显示 HUD
+linclient.config.fullbright=全亮（夜视）
+linclient.config.disableClouds=隐藏云
+linclient.config.disableFireOverlay=隐藏火焰遮罩
+linclient.config.disableWaterOverlay=隐藏水遮罩
+linclient.config.dynamicFps=动态帧率
+
+linclient.module.self_status=自身状态
+linclient.module.environment=环境
+linclient.module.item=物品
+linclient.module.input=输入
+linclient.module.other=其他
+linclient.module.entity=实体
+linclient.module.combat=战斗
+linclient.module.boss=Boss
+
+linclient.on=开
+linclient.off=关
+linclient.none=无
+
+linclient.gm.creative=创造
+linclient.gm.spectator=旁观
+linclient.gm.survival=生存
+linclient.gm.adventure=冒险
+
+linclient.self.hp=生命: %s
+linclient.self.hunger=饥饿: %d
+linclient.self.saturation=饱和度: %s
+linclient.self.air=空气: %d
+linclient.self.pos=坐标: %d %d %d
+linclient.self.speed=速度: %s 格/秒
+linclient.self.distance=路程: %s 米
+linclient.self.gamemode=模式: %s
+
+linclient.env.fps=帧率: %d
+linclient.env.ping=延迟: %s ms
+linclient.env.memory=内存: %d/%d MB
+linclient.env.entities=实体: %d
+linclient.env.chunks=区块: %d
+linclient.env.biome=生物群系: %s
+linclient.env.time=时间: %s
+linclient.env.light=光照: %d
+
+linclient.item.held=手持: %s
+linclient.item.durability=耐久: %d/%d
+linclient.item.total=物品总数: %d
+linclient.item.stacks=堆叠数: %d
+
+linclient.input.cpsL=左键 CPS: %s
+linclient.input.cpsR=右键 CPS: %s
+linclient.input.left=左键: %s
+linclient.input.right=右键: %s
+linclient.input.sneak=潜行: %s
+linclient.input.sprint=疾跑: %s
+linclient.input.fps=帧率: %d
+
+linclient.other.dim=维度: %s
+linclient.other.facing=朝向: %s
+linclient.other.day=天数: %d
+linclient.other.xp=经验: %d（共 %d）
+linclient.other.difficulty=难度: %s
+linclient.other.light=光照: %d
+
+linclient.entity.total=总计: %d
+linclient.entity.players=玩家: %d
+linclient.entity.mobs=怪物: %d
+linclient.entity.animals=动物: %d
+linclient.entity.items=物品: %d
+
+linclient.combat.target=目标: %s
+linclient.combat.hp=目标生命: %s
+linclient.combat.dist=目标距离: %s
+linclient.combat.combo=连击: %d
+linclient.combat.dealt=上次命中: %s
+linclient.combat.taken=上次受伤: %s
+
+linclient.boss.none=附近无 Boss

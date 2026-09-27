@@ -1,0 +1,85 @@
+key.categories.linclient=LinClient
+key.linclient.openConfig=Open Config Menu (Right Shift)
+key.linclient.toggleHud=Toggle HUD
+key.linclient.toggleMod=Toggle LinClient
+
+linclient.config.title=LinClient Config
+linclient.config.hint=Right Shift to open / ESC to close - changes save instantly
+linclient.config.enableMod=Enable LinClient
+linclient.config.showHud=Show HUD
+linclient.config.fullbright=Fullbright
+linclient.config.disableClouds=Hide Clouds
+linclient.config.disableFireOverlay=Hide Fire Overlay
+linclient.config.disableWaterOverlay=Hide Water Overlay
+linclient.config.dynamicFps=Dynamic FPS
+
+linclient.module.self_status=Self Status
+linclient.module.environment=Environment
+linclient.module.item=Item
+linclient.module.input=Input
+linclient.module.other=Other
+linclient.module.entity=Entities
+linclient.module.combat=Combat
+linclient.module.boss=Boss
+
+linclient.on=ON
+linclient.off=OFF
+linclient.none=None
+
+linclient.gm.creative=Creative
+linclient.gm.spectator=Spectator
+linclient.gm.survival=Survival
+linclient.gm.adventure=Adventure
+
+linclient.self.hp=HP: %s
+linclient.self.hunger=Hunger: %d
+linclient.self.saturation=Saturation: %s
+linclient.self.air=Air: %d
+linclient.self.pos=Pos: %d %d %d
+linclient.self.speed=Speed: %s b/s
+linclient.self.distance=Distance: %s m
+linclient.self.gamemode=Mode: %s
+
+linclient.env.fps=FPS: %d
+linclient.env.ping=Ping: %s ms
+linclient.env.memory=Memory: %d/%d MB
+linclient.env.entities=Entities: %d
+linclient.env.chunks=Chunks: %d
+linclient.env.biome=Biome: %s
+linclient.env.time=Time: %s
+linclient.env.light=Light: %d
+
+linclient.item.held=Held: %s
+linclient.item.durability=Durability: %d/%d
+linclient.item.total=Total Items: %d
+linclient.item.stacks=Stacks: %d
+
+linclient.input.cpsL=CPS L: %s
+linclient.input.cpsR=CPS R: %s
+linclient.input.left=LMB: %s
+linclient.input.right=RMB: %s
+linclient.input.sneak=Sneak: %s
+linclient.input.sprint=Sprint: %s
+linclient.input.fps=FPS: %d
+
+linclient.other.dim=Dimension: %s
+linclient.other.facing=Facing: %s
+linclient.other.day=Day: %d
+linclient.other.xp=XP: %d (%d total)
+linclient.other.difficulty=Difficulty: %s
+linclient.other.light=Light: %d
+
+linclient.entity.total=Total: %d
+linclient.entity.players=Players: %d
+linclient.entity.mobs=Mobs: %d
+linclient.entity.animals=Animals: %d
+linclient.entity.items=Items: %d
+
+linclient.combat.target=Target: %s
+linclient.combat.hp=Target HP: %s
+linclient.combat.dist=Target Dist: %s
+linclient.combat.combo=Combo: %d
+linclient.combat.dealt=Last Hit: %s
+linclient.combat.taken=Last Taken: %s
+
+linclient.boss.none=No boss nearby

@@ -1,0 +1,26 @@
+[
+  {
+    "modid": "linclient",
+    "name": "LinClient",
+    "description": "Practical, open-source, NON-CHEATING Minecraft client mod. HUD info display, client-side visual/performance toggles, and an in-game config menu (open with Right Shift). Forge 1.8.9 build.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://github.com/lindedaoqwq/Minecraft-LinClient",
+    "updateUrl": "",
+    "authorList": ["lindedaoqwq"],
+    "credits": "Open source under MIT.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": {
+      "required": [
+        {
+          "modid": "forge",
+          "minVersion": "11.15.1.2318",
+          "maxVersion": "",
+          "required": true
+        }
+      ],
+      "optional": []
+    }
+  }
+]
