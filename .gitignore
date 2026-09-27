@@ -25,3 +25,7 @@ logs/
 
 # Local config (optional, keep layout in repo)
 # config/
+
+# 临时构建日志轮询辅助文件
+.poll_cilogs.sh
+.cilogs.out
