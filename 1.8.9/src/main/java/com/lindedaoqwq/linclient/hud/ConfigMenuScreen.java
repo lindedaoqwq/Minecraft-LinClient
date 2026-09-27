@@ -88,8 +88,8 @@ public class ConfigMenuScreen extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
-        this.drawCenteredString(this.fontRenderer, I18n.t("linclient.config.title"), this.width / 2, 16, 0xFFFFFF);
-        this.drawCenteredString(this.fontRenderer, I18n.t("linclient.config.hint"), this.width / 2, this.height - 22, 0xAAAAAA);
+        this.drawCenteredString(this.fontRendererObj, I18n.t("linclient.config.title"), this.width / 2, 16, 0xFFFFFF);
+        this.drawCenteredString(this.fontRendererObj, I18n.t("linclient.config.hint"), this.width / 2, this.height - 22, 0xAAAAAA);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 

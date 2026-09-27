@@ -32,7 +32,7 @@ public class CombatModule extends HudModule {
         if (target != null) {
             l.add(I18n.t("linclient.combat.target", target.getDisplayName().getUnformattedText()));
             l.add(I18n.t("linclient.combat.hp", Format.f(target.getHealth())));
-            l.add(I18n.t("linclient.combat.dist", Format.f(p.getDistance(target))));
+            l.add(I18n.t("linclient.combat.dist", Format.f(p.getDistanceToEntity(target))));
         } else {
             l.add(I18n.t("linclient.combat.target", I18n.t("linclient.none")));
         }

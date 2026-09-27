@@ -29,7 +29,7 @@ public class ClientEvents {
         if (!ClientState.modActive || !ClientState.hudEnabled) return;
         if (mc.currentScreen != null) return;           // a screen draws its own overlay
         if (mc.gameSettings.showDebugInfo) return;      // don't fight the F3 debug screen
-        ScaledResolution res = event.getResolution();
+        ScaledResolution res = event.resolution;
         HudOverlay.render(mc, res);
     }
 
@@ -58,10 +58,10 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onBlockOverlay(RenderBlockOverlayEvent event) {
-        if (event.getOverlayType() == RenderBlockOverlayEvent.OverlayType.FIRE && ModConfig.disableFireOverlay) {
+        if (event.overlayType == RenderBlockOverlayEvent.OverlayType.FIRE && ModConfig.disableFireOverlay) {
             event.setCanceled(true);
         }
-        if (event.getOverlayType() == RenderBlockOverlayEvent.OverlayType.WATER && ModConfig.disableWaterOverlay) {
+        if (event.overlayType == RenderBlockOverlayEvent.OverlayType.WATER && ModConfig.disableWaterOverlay) {
             event.setCanceled(true);
         }
     }

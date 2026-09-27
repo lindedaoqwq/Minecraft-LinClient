@@ -44,7 +44,7 @@ public class EnvironmentModule extends HudModule {
         l.add(I18n.t("linclient.env.chunks", chunks));
 
         BlockPos bp = mc.thePlayer.getPosition();
-        BiomeGenBase biome = w.getBiomeGenForCoords(bp.getX(), bp.getZ());
+        BiomeGenBase biome = w.getBiomeGenForCoords(bp);
         if (biome != null) l.add(I18n.t("linclient.env.biome", biome.biomeName));
 
         l.add(I18n.t("linclient.env.time", formatTime(w.getWorldTime())));
