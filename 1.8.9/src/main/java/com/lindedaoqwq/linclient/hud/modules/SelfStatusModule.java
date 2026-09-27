@@ -33,7 +33,7 @@ public class SelfStatusModule extends HudModule {
 
     private String gamemode(EntityPlayerSP p) {
         if (p.capabilities.isCreativeMode) return I18n.t("linclient.gm.creative");
-        if (p.capabilities.isSpectator) return I18n.t("linclient.gm.spectator");
+        if (p.isSpectator()) return I18n.t("linclient.gm.spectator");
         if (p.capabilities.allowEdit) return I18n.t("linclient.gm.survival");
         return I18n.t("linclient.gm.adventure");
     }

@@ -5,6 +5,7 @@ import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.Format;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraft.client.Minecraft;
+import org.lwjgl.opengl.Display;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class InputModule extends HudModule {
         l.add(I18n.t("linclient.input.right", ClientState.rightDown ? I18n.t("linclient.off") : I18n.t("linclient.on")));
         l.add(I18n.t("linclient.input.sneak", mc.gameSettings.keyBindSneak.isKeyDown() ? I18n.t("linclient.on") : I18n.t("linclient.off")));
         l.add(I18n.t("linclient.input.sprint", mc.gameSettings.keyBindSprint.isKeyDown() ? I18n.t("linclient.on") : I18n.t("linclient.off")));
-        l.add(I18n.t("linclient.input.fps", mc.debugFPS));
+        l.add(I18n.t("linclient.input.fps", Display.getFPS()));
         return l;
     }
 }

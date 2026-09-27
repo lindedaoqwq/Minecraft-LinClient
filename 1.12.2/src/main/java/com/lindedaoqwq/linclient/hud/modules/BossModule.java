@@ -4,14 +4,16 @@ import com.lindedaoqwq.linclient.hud.HudModule;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.boss.IBossDisplayData;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.entity.boss.EntityWither;
 
 import java.util.List;
 
 /**
  * Boss module. Detects nearby boss-type entities in the loaded world (Ender Dragon, Wither, etc.)
- * by checking {@link IBossDisplayData}. This is purely client-side observation of entities already
- * present in the world - no hidden server data is read.
+ * by checking their class. This is purely client-side observation of entities already present in
+ * the world - no hidden server data is read.
  */
 public class BossModule extends HudModule {
     public BossModule() {
@@ -24,8 +26,8 @@ public class BossModule extends HudModule {
         if (mc.world == null) return l;
         boolean any = false;
         for (Entity e : mc.world.loadedEntityList) {
-            if (e instanceof IBossDisplayData) {
-                l.add(e.getName());
+            if ((e instanceof EntityDragon || e instanceof EntityWither) && e instanceof EntityLivingBase) {
+                l.add(((EntityLivingBase) e).getDisplayName().getUnformattedText());
                 any = true;
             }
         }

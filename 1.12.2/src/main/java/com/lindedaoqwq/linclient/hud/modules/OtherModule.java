@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -27,9 +28,16 @@ public class OtherModule extends HudModule {
         l.add(I18n.t("linclient.other.facing", cap(f.getName())));
         l.add(I18n.t("linclient.other.day", (w.getWorldTime() / 24000L) + 1L));
         l.add(I18n.t("linclient.other.xp", p.experienceLevel, p.experienceTotal));
-        l.add(I18n.t("linclient.other.difficulty", w.getDifficulty().getName()));
+        l.add(I18n.t("linclient.other.difficulty", difficultyName(w.getDifficulty())));
         l.add(I18n.t("linclient.other.light", w.getLight(p.getPosition())));
         return l;
+    }
+
+    private String difficultyName(EnumDifficulty d) {
+        if (d == EnumDifficulty.PEACEFUL) return I18n.t("linclient.difficulty.peaceful");
+        if (d == EnumDifficulty.EASY) return I18n.t("linclient.difficulty.easy");
+        if (d == EnumDifficulty.NORMAL) return I18n.t("linclient.difficulty.normal");
+        return I18n.t("linclient.difficulty.hard");
     }
 
     private String cap(String s) {

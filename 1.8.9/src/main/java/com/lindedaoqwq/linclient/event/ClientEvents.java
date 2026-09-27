@@ -11,6 +11,7 @@ import net.minecraftforge.client.event.RenderBlockOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.lwjgl.opengl.Display;
 
 /**
  * All client-side Forge events are handled here. Nothing reads hidden server data or changes
@@ -133,7 +134,7 @@ public class ClientEvents {
 
         // Dynamic FPS: auto-adjust render distance (client setting only).
         if (ModConfig.dynamicFps && mc.theWorld != null) {
-            int fps = mc.debugFPS;
+            int fps = Display.getFPS();
             int cur = mc.gameSettings.renderDistanceChunks;
             if (fps < ModConfig.dynamicFpsMin && cur > ModConfig.dynamicFpsMinDist) {
                 mc.gameSettings.renderDistanceChunks = ModConfig.dynamicFpsMinDist;

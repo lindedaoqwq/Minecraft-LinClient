@@ -31,6 +31,11 @@ linclient.gm.spectator=旁观
 linclient.gm.survival=生存
 linclient.gm.adventure=冒险
 
+linclient.difficulty.peaceful=和平
+linclient.difficulty.easy=简单
+linclient.difficulty.normal=普通
+linclient.difficulty.hard=困难
+
 linclient.self.hp=生命: %s
 linclient.self.hunger=饥饿: %d
 linclient.self.saturation=饱和度: %s

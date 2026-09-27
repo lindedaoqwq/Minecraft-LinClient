@@ -4,11 +4,11 @@ import com.lindedaoqwq.linclient.hud.HudModule;
 import com.lindedaoqwq.linclient.util.Format;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
+import org.lwjgl.opengl.Display;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public class EnvironmentModule extends HudModule {
         World w = mc.theWorld;
         if (w == null || mc.thePlayer == null) return l;
 
-        l.add(I18n.t("linclient.env.fps", mc.debugFPS));
+        l.add(I18n.t("linclient.env.fps", Display.getFPS()));
 
         String ping = "?";
         if (mc.getNetHandler() != null) {
@@ -39,7 +39,7 @@ public class EnvironmentModule extends HudModule {
 
         l.add(I18n.t("linclient.env.entities", w.loadedEntityList.size()));
 
-        int chunks = ((ChunkProviderClient) w.getChunkProvider()).getLoadedChunksCount();
+        int chunks = w.getChunkProvider().getLoadedChunkCount();
         l.add(I18n.t("linclient.env.chunks", chunks));
 
         BlockPos bp = mc.thePlayer.getPosition();

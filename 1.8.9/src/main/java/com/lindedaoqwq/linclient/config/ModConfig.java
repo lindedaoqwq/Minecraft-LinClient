@@ -1,6 +1,7 @@
 package com.lindedaoqwq.linclient.config;
 
 import com.lindedaoqwq.linclient.LinClient;
+import com.lindedaoqwq.linclient.state.ClientState;
 import net.minecraftforge.common.config.Configuration;
 
 /**
