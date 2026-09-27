@@ -77,14 +77,3 @@ jar {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-    repositories {
-        // Add your Maven repository here if you want to publish.
-    }
-}
