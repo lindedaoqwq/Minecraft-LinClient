@@ -162,15 +162,16 @@ public class ClientEvents {
             fullbrightActive = false;
         }
 
-        // Clouds (renderClouds is an OptionInstance<CloudStatus> field in 1.20.1)
+        // Clouds (1.20.1: Options.cloudStatus() returns OptionInstance<CloudStatus>;
+        // getCloudsType() returns the current CloudStatus value)
         if (ModConfig.DISABLE_CLOUDS.get()) {
             if (!cloudsOff) {
-                origClouds = mc.options.renderClouds.get();
+                origClouds = mc.options.getCloudsType();
                 cloudsOff = true;
             }
-            mc.options.renderClouds.set(CloudStatus.OFF);
+            mc.options.cloudStatus().set(CloudStatus.OFF);
         } else if (cloudsOff) {
-            mc.options.renderClouds.set(origClouds);
+            mc.options.cloudStatus().set(origClouds);
             cloudsOff = false;
         }
 
