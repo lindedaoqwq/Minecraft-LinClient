@@ -88,3 +88,37 @@ linclient.combat.dealt=Last Hit: %s
 linclient.combat.taken=Last Taken: %s
 
 linclient.boss.none=No boss nearby
+
+key.linclient.openHome=Open Home (F8)
+
+linclient.gui.openconfig=LinClient Settings
+linclient.gui.hudlayout=HUD Layout
+linclient.gui.openhome=Home
+linclient.gui.close=Close
+linclient.gui.language=Language
+linclient.gui.hint=Right Shift: toggle HUD edit / open config. Drag modules in HUD edit mode.
+linclient.gui.clickgui.subtitle=ClickGUI
+linclient.gui.cat.modules=Modules
+linclient.gui.cat.vanilla=Vanilla HUD
+linclient.gui.cat.settings=Settings
+linclient.gui.home.subtitle=Open-source, non-cheating client utilities
+
+linclient.autosprint=Auto Sprint
+
+linclient.vanilla.health=Health bar
+linclient.vanilla.armor=Armor bar
+linclient.vanilla.food=Hunger bar
+linclient.vanilla.air=Air bar
+linclient.vanilla.hotbar=Hotbar
+linclient.vanilla.exp=Experience / Jump bar
+linclient.vanilla.crosshair=Crosshair
+linclient.vanilla.boss=Boss bar
+linclient.vanilla.potion=Potion icons
+linclient.vanilla.vignette=Vignette
+linclient.vanilla.portal=Portal overlay
+linclient.vanilla.helmet=Helmet overlay
+linclient.vanilla.jumpbar=Jump bar
+
+linclient.input.lmb=LMB
+linclient.input.rmb=RMB
+linclient.input.space=SPACE

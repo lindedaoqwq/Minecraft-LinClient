@@ -88,3 +88,37 @@ linclient.combat.dealt=上次命中: %s
 linclient.combat.taken=上次受伤: %s
 
 linclient.boss.none=附近无 Boss
+
+key.linclient.openHome=打开主页面（F8）
+
+linclient.gui.openconfig=LinClient 设置
+linclient.gui.hudlayout=HUD 布局
+linclient.gui.openhome=主页面
+linclient.gui.close=关闭
+linclient.gui.language=语言
+linclient.gui.hint=右 Shift：切换 HUD 编辑 / 打开设置。HUD 编辑模式下可拖拽模块。
+linclient.gui.clickgui.subtitle=点击式设置界面
+linclient.gui.cat.modules=模块
+linclient.gui.cat.vanilla=原版界面
+linclient.gui.cat.settings=设置
+linclient.gui.home.subtitle=开源、非作弊的客户端实用工具
+
+linclient.autosprint=自动疾跑
+
+linclient.vanilla.health=血条
+linclient.vanilla.armor=护甲条
+linclient.vanilla.food=饥饿条
+linclient.vanilla.air=空气条
+linclient.vanilla.hotbar=物品栏
+linclient.vanilla.exp=经验 / 跳跃条
+linclient.vanilla.crosshair=准星
+linclient.vanilla.boss=Boss 血条
+linclient.vanilla.potion=药水图标
+linclient.vanilla.vignette=暗角
+linclient.vanilla.portal=传送门遮罩
+linclient.vanilla.helmet=头盔遮罩
+linclient.vanilla.jumpbar=跳跃条
+
+linclient.input.lmb=左键
+linclient.input.rmb=右键
+linclient.input.space=空格

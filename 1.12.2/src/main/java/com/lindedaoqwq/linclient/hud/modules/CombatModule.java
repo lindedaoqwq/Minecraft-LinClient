@@ -19,7 +19,7 @@ import java.util.List;
 
 public class CombatModule extends HudModule {
     public CombatModule() {
-        super("combat", "linclient.module.combat", true, 0xFF55FF);
+        super("combat", "linclient.module.combat", 0xFF55FF);
     }
 
     @Override

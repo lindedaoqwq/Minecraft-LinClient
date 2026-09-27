@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ItemModule extends HudModule {
     public ItemModule() {
-        super("item", "linclient.module.item", false, 0xFFAA00);
+        super("item", "linclient.module.item", 0xFFAA00);
     }
 
     @Override

@@ -1,5 +1,8 @@
 package com.lindedaoqwq.linclient.state;
 
+import net.minecraft.client.Minecraft;
+
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 
 /**
@@ -9,6 +12,7 @@ import java.util.ArrayDeque;
 public class ClientState {
     public static boolean modActive = true;
     public static boolean hudEnabled = true;
+    public static boolean hudEditMode = false;
 
     // Movement
     public static double speed = 0.0;        // blocks / second
@@ -16,12 +20,10 @@ public class ClientState {
     public static double prevX = 0, prevY = 0, prevZ = 0;
     public static boolean hasPrev = false;
 
-    // Input
-    public static boolean leftDown = false, rightDown = false;
-    public static long lastInputTime = 0;
+    // Input / clicks
+    public static boolean leftHeld = false, rightHeld = false;
     public static final ArrayDeque<Long> leftClickTimes = new ArrayDeque<>();
     public static final ArrayDeque<Long> rightClickTimes = new ArrayDeque<>();
-    public static double cpsLeft = 0, cpsRight = 0;
 
     // Health / damage
     public static float lastPlayerHealth = 0;
@@ -40,36 +42,68 @@ public class ClientState {
     public static float lastDamageDealt = 0;
     public static long lastDamageDealtTime = 0;
 
+    // FPS: read from Minecraft's own debugFPS field (identical to the F3 counter) via reflection,
+    // with a sliding-window fallback if reflection ever fails.
+    public static int fps = 0;
+    private static Field debugFpsField = null;
+    private static boolean fpsReflectionReady = false;
+    private static int frameCounter = 0;
+    private static long fpsTimestamp = System.currentTimeMillis();
+
+    // HUD drag state
+    public static String draggingId = null;
+    public static int dragOffsetX = 0, dragOffsetY = 0;
+
+    public static void refreshFps(Minecraft mc) {
+        if (!fpsReflectionReady) {
+            try {
+                Field f = mc.getClass().getDeclaredField("debugFPS");
+                f.setAccessible(true);
+                debugFpsField = f;
+                fpsReflectionReady = true;
+            } catch (Exception e) {
+                fpsReflectionReady = false;
+            }
+        }
+        if (fpsReflectionReady && debugFpsField != null) {
+            try {
+                fps = ((Integer) debugFpsField.get(mc)).intValue();
+            } catch (Exception e) {
+                fps = 0;
+            }
+        }
+        if (fps <= 0) {
+            frameCounter++;
+            long now = System.currentTimeMillis();
+            if (now - fpsTimestamp >= 1000L) {
+                fps = frameCounter;
+                frameCounter = 0;
+                fpsTimestamp = now;
+            }
+        }
+    }
+
     public static void addLeftClick() {
         long now = System.currentTimeMillis();
         leftClickTimes.addLast(now);
         prune(leftClickTimes, now);
-        cpsLeft = leftClickTimes.size();
     }
 
     public static void addRightClick() {
         long now = System.currentTimeMillis();
         rightClickTimes.addLast(now);
         prune(rightClickTimes, now);
-        cpsRight = rightClickTimes.size();
+    }
+
+    public static int leftCps() {
+        return leftClickTimes.size();
+    }
+
+    public static int rightCps() {
+        return rightClickTimes.size();
     }
 
     private static void prune(ArrayDeque<Long> q, long now) {
         while (!q.isEmpty() && now - q.peekFirst() > 1000L) q.pollFirst();
-    }
-
-    // FPS: counted client-side on every rendered frame (no reliance on Minecraft internals).
-    public static int fps = 0;
-    private static int frameCounter = 0;
-    private static long fpsTimestamp = System.currentTimeMillis();
-
-    public static void onFrame() {
-        frameCounter++;
-        long now = System.currentTimeMillis();
-        if (now - fpsTimestamp >= 1000L) {
-            fps = frameCounter;
-            frameCounter = 0;
-            fpsTimestamp = now;
-        }
     }
 }

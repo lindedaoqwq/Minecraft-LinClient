@@ -15,7 +15,7 @@ import java.util.List;
 
 public class EnvironmentModule extends HudModule {
     public EnvironmentModule() {
-        super("environment", "linclient.module.environment", false, 0x55FFFF);
+        super("environment", "linclient.module.environment", 0x55FFFF);
     }
 
     @Override

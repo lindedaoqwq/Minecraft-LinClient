@@ -15,7 +15,7 @@ import java.util.List;
 
 public class EntityModule extends HudModule {
     public EntityModule() {
-        super("entity", "linclient.module.entity", true, 0xFF5555);
+        super("entity", "linclient.module.entity", 0xFF5555);
     }
 
     @Override

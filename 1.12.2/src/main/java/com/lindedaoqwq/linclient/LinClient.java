@@ -15,13 +15,12 @@ import org.apache.logging.log4j.Logger;
  * LinClient - a practical, open-source, NON-CHEATING Minecraft client mod (Forge 1.12.2).
  *
  * Scope (client side only, no server-side behaviour changes, no hidden server info):
- *   - HUD information display (self / entities / input / environment / items / other / combat / boss)
+ *   - HUD information display (self / entities / input / environment / items / other / combat)
  *   - Client-side visual & performance toggles
- *   - An in-game config menu opened with Right Shift
+ *   - An in-game ClickGUI opened with Right Shift, plus a standalone Home screen (F8)
  */
 @Mod(modid = LinClient.MOD_ID, name = LinClient.MOD_NAME, version = LinClient.VERSION,
-        clientSideOnly = true, acceptedMinecraftVersions = "[1.12.2]",
-        updateJSON = "https://raw.githubusercontent.com/lindedaoqwq/Minecraft-LinClient/main/update.json")
+        clientSideOnly = true, acceptedMinecraftVersions = "[1.12.2]")
 public class LinClient {
     public static final String MOD_ID = "linclient";
     public static final String MOD_NAME = "LinClient";

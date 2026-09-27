@@ -20,34 +20,41 @@
 - 不修改任何服务端行为；所有视觉/性能开关（全亮、云、火焰/水覆盖、动态帧率等）仅作用于本地渲染。
 - 战斗辅助**仅显示信息**（目标血量、造成伤害/受到伤害数字、连击），不含任何自动操作。
 - 不读取服务端未下发的信息，不含反作弊绕过逻辑。
-- Boss 检测基于**世界中已加载的 Boss 实体**（直接判定 `EntityDragon` / `EntityWither` 类型并读取其显示名），不依赖任何服务端隐藏协议。
 
 ---
 
 ## 功能清单
 
-### HUD 信息显示（8 个模块，可在游戏内配置菜单中单独开关）
+### HUD 信息显示（7 个模块，可在游戏内 ClickGUI 中单独开关）
 | 模块 | 内容 |
 | --- | --- |
-| 自身状态 (Self) | 血量 / 吸收 / 护甲 / 饱食 / 氧气 / 经验 / 游戏模式 |
+| 自身状态 (Self) | 血量 / 吸收 / 饱食 / 氧气 / 坐标 / 速度 / 移动距离 / 游戏模式 |
 | 实体信息 (Entity) | 附近 玩家 / 怪物 / 动物 / 掉落物 数量统计 |
-| 输入监控 (Input) | 移动/潜行/疾跑 实时状态；左/右键 CPS 与按键状态 |
-| 环境信息 (Environment) | 坐标 / 朝向 / 群系 / 光照 / 游戏内时间 / 真实时间 / FPS / 延迟 / 内存 / 实体数 / 区块数 |
+| 输入监控 (Input) | W/A/S/D 键盘图 + 左键(LMB)/右键(RMB)/空格(Space) 按键高亮；左/右 CPS 实时读数 |
+| 环境信息 (Environment) | 坐标 / 朝向 / 群系 / 光照 / 游戏内时间 / FPS / 延迟 / 内存 / 实体数 / 区块数 |
 | 物品信息 (Item) | 手持物品名称 / 耐久；背包物品概览 |
-| 其他 (Other) | 维度 / 朝向 / 难度 / 速度 / 移动距离 / AFK 计时 / 死亡坐标记录 |
+| 其他 (Other) | 维度 / 朝向 / 难度 / 速度 / 移动距离 / 经验 / 光照 |
 | 战斗辅助（仅信息） | 最近攻击目标 血量/距离；造成伤害 / 受到伤害；连击计数 |
-| Boss 增强 | 列出当前世界中已加载的 Boss 实体 |
+
+> FPS 直接读取与 F3 调试屏相同的 `debugFPS` 来源（反射获取，失败时回退滑动窗口），数值与游戏一致。
 
 ### 性能与视觉优化（均为客户端本地设置）
 - **视觉覆盖开关**：全亮 (Fullbright) / 隐藏云 / 隐藏火焰覆盖 / 隐藏水覆盖
 - **动态 FPS**：低帧时自动降低渲染距离，恢复后自动还原（纯客户端设置，不影响服务端）
 
+### 原版 HUD 元素显隐
+在 ClickGUI 的 `vanilla` 分类中可单独隐藏以下原版界面元素（纯本地覆盖渲染，不影响服务端）：血量 / 护甲 / 饱食 / 氧气 / 快捷栏 / 经验条 / 准星 / Boss 血条 / 药水图标 / 暗角 / 传送门 / 头盔 / 跳跃条。
+
 > 说明：早期计划中的「隐藏天气」开关已移除——1.8.9 / 1.12.2 没有可靠的**纯客户端**天气抑制 API，强行实现要么需要 coremod（有作弊嫌疑），要么行为不可靠，因此舍去以守住「非外挂、可干净构建」的底线。
 
 ### 界面与配置
-- **游戏内配置菜单**：游戏中按 **右 Shift（Right Shift）** 打开，集中管理所有总开关与 8 个 HUD 模块的显隐，ESC 关闭并自动保存。
+- **ClickGUI（游戏内配置）**：游戏中按 **右 Shift（Right Shift）** 打开。左侧分类 `modules` / `vanilla` / `settings`，右侧逐项开关；并提供「语言切换」「HUD 布局（进入拖动编辑）」「打开主页面」「关闭」按钮。再次按右 Shift 可退出 HUD 拖动编辑并回到 ClickGUI。
+- **主页面（Home）**：按 **F8** 或从标题界面（主菜单）的 `LinClient` 按钮打开。展示品牌标题、实时 FPS、各模块总开关、自动疾跑，以及「打开设置 / HUD 布局 / 语言 / 关闭」快捷入口。
+- **HUD 拖动布局**：在 ClickGUI / 主页面点「HUD 布局」进入编辑模式，直接在游戏画面上拖动各 HUD 模块到任意位置，松手即保存。
+- **暂停 / 设置菜单入口**：游戏内暂停菜单（Esc）与设置页（Options）底部新增 `LinClient` 按钮，一键进入 ClickGUI。
+- **自动疾跑（Auto Sprint）**：在 `settings` 分类或主页面开启后，向前移动时自动疾跑（复用原版疾跑键状态，非加速外挂）。
+- **运行时中英切换**：ClickGUI / 主页面内一键切换 `zh_CN` / `en_US`，即时生效，无需重启游戏。
 - **Forge 原生配置**：各版本在 `config/linclient.cfg` 落盘（基于 `net.minecraftforge.common.config.Configuration`），可手动编辑。
-- **中英双语 i18n**：`en_US` / `zh_CN`，跟随游戏语言设置。
 
 ---
 
@@ -65,23 +72,24 @@ Minecraft-LinClient/
 │       ├── java/com/lindedaoqwq/linclient/
 │       │   ├── LinClient.java                 # @Mod 入口
 │       │   ├── config/
-│       │   │   ├── ModConfig.java             # Forge 原生配置（全局/性能/视觉/模块开关）
-│       │   │   └── KeyBindings.java           # 快捷键（右Shift 开菜单 / H 切 HUD）
+│       │   │   ├── ModConfig.java             # Forge 原生配置（全局/性能/视觉/模块开关/位置/语言）
+│       │   │   └── KeyBindings.java           # 快捷键（右Shift 开 ClickGUI / F8 开主页面 / H 切 HUD）
+│       │   ├── gui/
+│       │   │   ├── ClickGuiScreen.java        # 游戏内 ClickGUI 配置界面
+│       │   │   └── HomeScreen.java            # 独立主页面
 │       │   ├── hud/
-│       │   │   ├── HudModule.java             # 模块基类（渲染/布局）
-│       │   │   ├── HudOverlay.java            # 模块调度与渲染
-│       │   │   ├── ConfigMenuScreen.java      # 游戏内配置菜单
-│       │   │   └── modules/                   # 8 个信息模块
+│       │   │   ├── HudModule.java             # 模块基类（渲染/布局/拖动）
+│       │   │   ├── HudOverlay.java            # 模块调度与渲染 + 命中测试
+│       │   │   └── modules/                   # 7 个信息模块
 │       │   │       ├── SelfStatusModule.java
 │       │   │       ├── EntityModule.java
 │       │   │       ├── InputModule.java
 │       │   │       ├── EnvironmentModule.java
 │       │   │       ├── ItemModule.java
 │       │   │       ├── OtherModule.java
-│       │   │       ├── CombatModule.java
-│       │   │       └── BossModule.java
-│       │   ├── event/ClientEvents.java        # 渲染/刻度/输入/屏幕特效事件 + 视觉与性能开关
-│       │   ├── state/ClientState.java         # 共享运行时状态（CPS/速度/距离/AFK/连击/死亡坐标）
+│       │   │       └── CombatModule.java
+│       │   ├── event/ClientEvents.java        # 渲染/刻度/输入/菜单注入/屏幕特效 + 视觉与性能/自动疾跑
+│       │   ├── state/ClientState.java         # 共享运行时状态（CPS/速度/距离/连击/死亡坐标/FPS）
 │       │   └── util/                          # RenderUtils / I18n / Format / Rect
 │       └── resources/
 │           ├── mcmod.info
@@ -125,23 +133,26 @@ cd 1.8.9
 
 | 按键（默认） | 功能 |
 | --- | --- |
-| **右 Shift（Right Shift）** | 打开 / 关闭 游戏内配置菜单 |
+| **右 Shift（Right Shift）** | 打开 / 关闭 游戏内 ClickGUI（或退出 HUD 拖动编辑） |
+| **F8** | 打开独立主页面（Home） |
 | `H` | 切换整个 HUD 的显示 |
 | （自定义） | 启用 / 停用 LinClient 总开关 |
 
-### 配置菜单操作
-打开后：
-- 点击按钮切换对应总开关 / HUD 模块的显隐
-- 按钮文字实时反映当前开关状态（ON / OFF）
-- `ESC` 关闭菜单并自动保存配置（写入 `config/linclient.cfg`）
+### ClickGUI 操作
+打开后（左侧分类，右侧开关/按钮）：
+- `modules`：逐项开关 7 个 HUD 模块（`linclient.module.*`）。
+- `vanilla`：逐项隐藏原版 HUD 元素（血量 / 护甲 / 饱食 / 氧气 / 快捷栏 / 经验 / 准星 / Boss / 药水 / 暗角 / 传送门 / 头盔 / 跳跃条）。
+- `settings`：自动疾跑等开关，以及「语言切换 / HUD 布局 / 打开主页面 / 关闭」按钮。
+- 点「HUD 布局」进入拖动编辑，在游戏画面直接拖动模块，松手保存；再按右 Shift 退出编辑回到 ClickGUI。
+- 所有改动实时生效并写入 `config/linclient.cfg`。
 
 ---
 
 ## 配置说明
 
-1. **所有开关**：游戏内按 **右 Shift** 打开配置菜单，或用任意文本编辑器编辑 `config/linclient.cfg`。
-2. **模块显隐**：在配置菜单中逐项开关 8 个 HUD 模块（`linclient.module.*`）。
-3. **语言**：跟随游戏语言设置（en_US / zh_CN）。
+1. **所有开关**：游戏内按 **右 Shift** 打开 ClickGUI，或按 **F8** 打开主页面，或用任意文本编辑器编辑 `config/linclient.cfg`。
+2. **模块显隐**：在 ClickGUI 的 `modules` 分类逐项开关 7 个 HUD 模块（`linclient.module.*`）。
+3. **语言**：在 ClickGUI / 主页面内一键切换，运行时即时生效（en_US / zh_CN），并持久化到 `config/linclient.cfg`。
 
 ---
 

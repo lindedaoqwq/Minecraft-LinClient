@@ -13,7 +13,7 @@ import java.util.List;
 
 public class OtherModule extends HudModule {
     public OtherModule() {
-        super("other", "linclient.module.other", false, 0xAAAAFF);
+        super("other", "linclient.module.other", 0xAAAAFF);
     }
 
     @Override

@@ -11,7 +11,7 @@ import java.util.List;
 
 public class SelfStatusModule extends HudModule {
     public SelfStatusModule() {
-        super("self_status", "linclient.module.self_status", false, 0x55FF55);
+        super("self_status", "linclient.module.self_status", 0x55FF55);
     }
 
     @Override

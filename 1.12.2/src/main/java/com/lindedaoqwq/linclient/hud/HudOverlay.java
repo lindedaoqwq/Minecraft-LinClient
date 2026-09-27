@@ -1,14 +1,15 @@
 package com.lindedaoqwq.linclient.hud;
 
+import com.lindedaoqwq.linclient.config.ModConfig;
 import com.lindedaoqwq.linclient.hud.modules.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Renders every enabled {@link HudModule} over the game (called from the HUD render event).
+ * Renders every enabled {@link HudModule} over the game (called from the HUD render event), and
+ * provides hit-testing / lookup used by the in-game drag editor.
  */
 public final class HudOverlay {
     private HudOverlay() {}
@@ -23,19 +24,33 @@ public final class HudOverlay {
         MODULES.add(new OtherModule());
         MODULES.add(new EntityModule());
         MODULES.add(new CombatModule());
-        MODULES.add(new BossModule());
+        for (HudModule m : MODULES) {
+            m.posX = ModConfig.getModulePosX(m.id);
+            m.posY = ModConfig.getModulePosY(m.id);
+        }
     }
 
     public static List<HudModule> all() {
         return MODULES;
     }
 
-    public static void render(Minecraft mc, ScaledResolution res) {
+    public static HudModule get(String id) {
+        for (HudModule m : MODULES) if (m.id.equals(id)) return m;
+        return null;
+    }
+
+    public static String hitTest(int mx, int my) {
+        for (int i = MODULES.size() - 1; i >= 0; i--) {
+            HudModule m = MODULES.get(i);
+            if (m.isEnabled() && m.contains(mx, my)) return m.id;
+        }
+        return null;
+    }
+
+    public static void render(Minecraft mc) {
         if (mc.player == null || mc.world == null) return;
-        int w = res.getScaledWidth();
-        int h = res.getScaledHeight();
         for (HudModule m : MODULES) {
-            m.render(mc, w, h);
+            m.render(mc);
         }
     }
 }
