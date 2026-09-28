@@ -11,10 +11,13 @@ import java.util.List;
 
 /**
  * ClickGUI configuration screen (replaces the old config menu). Left sidebar picks a category
- * (modules / vanilla HUD / settings); the right panel lists toggles and action buttons.
+ * (modules / vanilla HUD / settings / performance); the right panel lists toggles and action buttons.
+ *
+ * Everything is drawn and hit-tested with our own region list, so it does not depend on
+ * GuiButton / actionPerformed (which would require IOException handling in keyTyped).
  */
 public class ClickGuiScreen extends GuiScreen {
-    private static final String[] CATS = {"modules", "vanilla", "settings"};
+    private static final String[] CATS = {"modules", "vanilla", "settings", "perf"};
 
     private static class VanillaEntry {
         final String key;
@@ -25,23 +28,41 @@ public class ClickGuiScreen extends GuiScreen {
         }
     }
 
+    // 1.8.9 has no POTION_ICONS / VIGNETTE element types, so they are omitted here.
     private static final VanillaEntry[] VANILLA = {
-            new VanillaEntry("hideHealth", "linclient.vanilla.health"),
-            new VanillaEntry("hideArmor", "linclient.vanilla.armor"),
-            new VanillaEntry("hideFood", "linclient.vanilla.food"),
-            new VanillaEntry("hideAir", "linclient.vanilla.air"),
-            new VanillaEntry("hideHotbar", "linclient.vanilla.hotbar"),
-            new VanillaEntry("hideExp", "linclient.vanilla.exp"),
-            new VanillaEntry("hideCrosshair", "linclient.vanilla.crosshair"),
-            new VanillaEntry("hideBoss", "linclient.vanilla.boss"),
-            // hidePotion / hideVignette have no ElementType in 1.8.9, so they are not listed here.
-            new VanillaEntry("hidePortal", "linclient.vanilla.portal"),
-            new VanillaEntry("hideHelmet", "linclient.vanilla.helmet"),
-            new VanillaEntry("hideJumpbar", "linclient.vanilla.jumpbar"),
+            new VanillaEntry("showHealth", "linclient.vanilla.health"),
+            new VanillaEntry("showArmor", "linclient.vanilla.armor"),
+            new VanillaEntry("showFood", "linclient.vanilla.food"),
+            new VanillaEntry("showAir", "linclient.vanilla.air"),
+            new VanillaEntry("showHotbar", "linclient.vanilla.hotbar"),
+            new VanillaEntry("showExp", "linclient.vanilla.exp"),
+            new VanillaEntry("showCrosshair", "linclient.vanilla.crosshair"),
+            new VanillaEntry("showBoss", "linclient.vanilla.boss"),
+            new VanillaEntry("showPortal", "linclient.vanilla.portal"),
+            new VanillaEntry("showHelmet", "linclient.vanilla.helmet"),
+            new VanillaEntry("showJumpbar", "linclient.vanilla.jumpbar"),
+    };
+
+    private static class PerfEntry {
+        final String key;
+        final String labelKey;
+        PerfEntry(String key, String labelKey) {
+            this.key = key;
+            this.labelKey = labelKey;
+        }
+    }
+
+    private static final PerfEntry[] PERF = {
+            new PerfEntry("dynamicFps", "linclient.perf.dynamicFps"),
+            new PerfEntry("smartFps", "linclient.perf.smartFps"),
+            new PerfEntry("fastGraphics", "linclient.perf.fastGraphics"),
+            new PerfEntry("noSmoothLight", "linclient.perf.noSmoothLight"),
+            new PerfEntry("lowParticles", "linclient.perf.lowParticles"),
+            new PerfEntry("disableClouds", "linclient.perf.noClouds"),
     };
 
     private static final int K_CAT = 0, K_TOGGLE_MODULE = 1, K_TOGGLE_VANILLA = 2,
-            K_TOGGLE_GENERAL = 3, K_BTN = 4;
+            K_TOGGLE_GENERAL = 3, K_TOGGLE_PERF = 4, K_BTN = 5;
 
     private static class Region {
         int x, y, w, h;
@@ -66,6 +87,7 @@ public class ClickGuiScreen extends GuiScreen {
         buildRegions();
         RenderUtils.drawVerticalGradient(0, 0, width, height, 0xFF10131A, 0xFF1B2030);
 
+        // Header
         fontRendererObj.drawString("LinClient", 12, 12, 0x66CCFF);
         fontRendererObj.drawString(I18n.t("linclient.gui.clickgui.subtitle"), 90, 16, 0x99AABB);
 
@@ -77,7 +99,9 @@ public class ClickGuiScreen extends GuiScreen {
             } else if (r.kind == K_TOGGLE_MODULE) {
                 drawToggleRow(r, I18n.t("linclient.module." + r.payload), ModConfig.isModuleOn(r.payload));
             } else if (r.kind == K_TOGGLE_VANILLA) {
-                drawToggleRow(r, I18n.t(VANILLA[findVanilla(r.payload)].labelKey), ModConfig.isVanillaHidden(r.payload));
+                drawToggleRow(r, I18n.t(VANILLA[findVanilla(r.payload)].labelKey), ModConfig.isVanillaShown(r.payload));
+            } else if (r.kind == K_TOGGLE_PERF) {
+                drawToggleRow(r, I18n.t(perfLabel(r.payload)), ModConfig.isPerfOn(r.payload));
             } else if (r.kind == K_TOGGLE_GENERAL) {
                 drawToggleRow(r, I18n.t("linclient.autosprint"), ModConfig.autoSprint);
             } else if (r.kind == K_BTN) {
@@ -89,6 +113,7 @@ public class ClickGuiScreen extends GuiScreen {
     private void drawToggleRow(Region r, String label, boolean on) {
         RenderUtils.drawRect(r.x, r.y, r.w, r.h, 0xCC1A1F2B);
         fontRendererObj.drawString(label, r.x + 8, r.y + 7, 0xE6E6E6);
+        // checkbox on the right
         int bx = r.x + r.w - 26, by = r.y + 5, bs = 14;
         RenderUtils.drawRect(bx, by, bs, bs, on ? 0xFF3A6EA5 : 0xFF33384A);
         if (on) fontRendererObj.drawString("X", bx + 4, by + 3, 0xFFFFFF);
@@ -105,6 +130,7 @@ public class ClickGuiScreen extends GuiScreen {
             case 200: return I18n.t("linclient.gui.language") + ": " + (I18n.getLang().equals("zh_CN") ? "中文" : "EN");
             case 201: return I18n.t("linclient.gui.hudlayout");
             case 203: return I18n.t("linclient.gui.close");
+            case 250: return I18n.t("linclient.perf.apply");
             default: return "";
         }
     }
@@ -112,6 +138,11 @@ public class ClickGuiScreen extends GuiScreen {
     private int findVanilla(String key) {
         for (int i = 0; i < VANILLA.length; i++) if (VANILLA[i].key.equals(key)) return i;
         return 0;
+    }
+
+    private String perfLabel(String key) {
+        for (PerfEntry e : PERF) if (e.key.equals(key)) return e.labelKey;
+        return key;
     }
 
     private void buildRegions() {
@@ -139,7 +170,7 @@ public class ClickGuiScreen extends GuiScreen {
                         K_TOGGLE_VANILLA, VANILLA[i].key, 0));
             }
             y += half * (rowH + 4);
-        } else {
+        } else if (selected == 2) {
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_TOGGLE_GENERAL, "autoSprint", 0));
             y += rowH + 4;
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 200));
@@ -149,6 +180,15 @@ public class ClickGuiScreen extends GuiScreen {
             regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 203));
             y += rowH + 4;
             fontRendererObj.drawString(I18n.t("linclient.gui.hint"), px + 10, y + 6, 0x8899AA);
+        } else {
+            // Performance category.
+            for (PerfEntry e : PERF) {
+                regions.add(new Region(px + 10, y, pw - 20, rowH, K_TOGGLE_PERF, e.key, 0));
+                y += rowH + 4;
+            }
+            regions.add(new Region(px + 10, y, pw - 20, rowH, K_BTN, null, 250));
+            y += rowH + 4;
+            fontRendererObj.drawString(I18n.t("linclient.perf.hint"), px + 10, y + 6, 0x8899AA);
         }
     }
 
@@ -179,6 +219,9 @@ public class ClickGuiScreen extends GuiScreen {
             case K_TOGGLE_GENERAL:
                 ModConfig.toggle(ModConfig.CAT_GENERAL, r.payload);
                 break;
+            case K_TOGGLE_PERF:
+                ModConfig.togglePerf(r.payload);
+                break;
             case K_BTN:
                 switch (r.code) {
                     case 200:
@@ -189,6 +232,9 @@ public class ClickGuiScreen extends GuiScreen {
                         break;
                     case 203:
                         mc.displayGuiScreen(null);
+                        break;
+                    case 250:
+                        ModConfig.applyPerformanceMode();
                         break;
                     default:
                         break;

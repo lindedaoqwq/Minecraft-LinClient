@@ -1,6 +1,5 @@
 package com.lindedaoqwq.linclient.config;
 
-import com.lindedaoqwq.linclient.LinClient;
 import com.lindedaoqwq.linclient.state.ClientState;
 import com.lindedaoqwq.linclient.util.I18n;
 import net.minecraftforge.common.config.Configuration;
@@ -47,13 +46,17 @@ public class ModConfig {
     public static int dynamicFpsRestore;
     public static int dynamicFpsMinDist;
     public static int dynamicFpsMaxDist;
+    public static boolean smartFps;
+    public static boolean fastGraphics;
+    public static boolean noSmoothLight;
+    public static boolean lowParticles;
 
     // modules
     public static boolean modSelf, modEnvironment, modItem, modInput, modOther, modEntity, modCombat;
 
-    // vanilla HUD element visibility
-    public static boolean hideHealth, hideArmor, hideFood, hideAir, hideHotbar, hideExp,
-            hideCrosshair, hideBoss, hidePotion, hideVignette, hidePortal, hideHelmet, hideJumpbar;
+    // vanilla HUD element visibility: true = SHOWN (leave on screen), false = HIDDEN.
+    public static boolean showHealth, showArmor, showFood, showAir, showHotbar, showExp,
+            showCrosshair, showBoss, showPotion, showVignette, showPortal, showHelmet, showJumpbar;
 
     private static final Map<String, int[]> modulePos = new HashMap<>();
 
@@ -84,6 +87,10 @@ public class ModConfig {
         dynamicFpsRestore = cfg.getInt("dynamicFpsRestore", CAT_PERF, 50, 1, 240, "FPS above this restores the distance.");
         dynamicFpsMinDist = cfg.getInt("dynamicFpsMinDist", CAT_PERF, 4, 2, 32, "Render distance used during a downgrade.");
         dynamicFpsMaxDist = cfg.getInt("dynamicFpsMaxDist", CAT_PERF, 12, 2, 32, "Render distance to restore to.");
+        smartFps = cfg.getBoolean("smartFps", CAT_PERF, false, "Throttle FPS when the window is not focused.");
+        fastGraphics = cfg.getBoolean("fastGraphics", CAT_PERF, false, "Use fast graphics (lower geometry cost).");
+        noSmoothLight = cfg.getBoolean("noSmoothLight", CAT_PERF, false, "Disable smooth lighting (big lighting saving).");
+        lowParticles = cfg.getBoolean("lowParticles", CAT_PERF, false, "Render minimal particles.");
 
         modSelf = cfg.getBoolean("self_status", CAT_MODULES, true, "Enable Self Status module.");
         modEnvironment = cfg.getBoolean("environment", CAT_MODULES, true, "Enable Environment module.");
@@ -93,19 +100,19 @@ public class ModConfig {
         modEntity = cfg.getBoolean("entity", CAT_MODULES, true, "Enable Entity module.");
         modCombat = cfg.getBoolean("combat", CAT_MODULES, true, "Enable Combat module.");
 
-        hideHealth = cfg.getBoolean("hideHealth", CAT_VANILLA, false, "Hide vanilla health bar.");
-        hideArmor = cfg.getBoolean("hideArmor", CAT_VANILLA, false, "Hide vanilla armor bar.");
-        hideFood = cfg.getBoolean("hideFood", CAT_VANILLA, false, "Hide vanilla hunger bar.");
-        hideAir = cfg.getBoolean("hideAir", CAT_VANILLA, false, "Hide vanilla air bar.");
-        hideHotbar = cfg.getBoolean("hideHotbar", CAT_VANILLA, false, "Hide vanilla hotbar.");
-        hideExp = cfg.getBoolean("hideExp", CAT_VANILLA, false, "Hide vanilla experience / jump bar.");
-        hideCrosshair = cfg.getBoolean("hideCrosshair", CAT_VANILLA, false, "Hide vanilla crosshair.");
-        hideBoss = cfg.getBoolean("hideBoss", CAT_VANILLA, false, "Hide vanilla boss bar.");
-        hidePotion = cfg.getBoolean("hidePotion", CAT_VANILLA, false, "Hide vanilla potion icons.");
-        hideVignette = cfg.getBoolean("hideVignette", CAT_VANILLA, false, "Hide vanilla vignette.");
-        hidePortal = cfg.getBoolean("hidePortal", CAT_VANILLA, false, "Hide vanilla portal overlay.");
-        hideHelmet = cfg.getBoolean("hideHelmet", CAT_VANILLA, false, "Hide vanilla helmet overlay.");
-        hideJumpbar = cfg.getBoolean("hideJumpbar", CAT_VANILLA, false, "Hide vanilla jump bar.");
+        showHealth = cfg.getBoolean("showHealth", CAT_VANILLA, true, "Show vanilla health bar.");
+        showArmor = cfg.getBoolean("showArmor", CAT_VANILLA, true, "Show vanilla armor bar.");
+        showFood = cfg.getBoolean("showFood", CAT_VANILLA, true, "Show vanilla hunger bar.");
+        showAir = cfg.getBoolean("showAir", CAT_VANILLA, true, "Show vanilla air bar.");
+        showHotbar = cfg.getBoolean("showHotbar", CAT_VANILLA, true, "Show vanilla hotbar.");
+        showExp = cfg.getBoolean("showExp", CAT_VANILLA, true, "Show vanilla experience / jump bar.");
+        showCrosshair = cfg.getBoolean("showCrosshair", CAT_VANILLA, true, "Show vanilla crosshair.");
+        showBoss = cfg.getBoolean("showBoss", CAT_VANILLA, true, "Show vanilla boss bar.");
+        showPotion = cfg.getBoolean("showPotion", CAT_VANILLA, true, "Show vanilla potion icons.");
+        showVignette = cfg.getBoolean("showVignette", CAT_VANILLA, true, "Show vanilla vignette.");
+        showPortal = cfg.getBoolean("showPortal", CAT_VANILLA, true, "Show vanilla portal overlay.");
+        showHelmet = cfg.getBoolean("showHelmet", CAT_VANILLA, true, "Show vanilla helmet overlay.");
+        showJumpbar = cfg.getBoolean("showJumpbar", CAT_VANILLA, true, "Show vanilla jump bar.");
 
         if (cfg.hasChanged()) cfg.save();
     }
@@ -123,23 +130,58 @@ public class ModConfig {
         }
     }
 
-    public static boolean isVanillaHidden(String key) {
+    /** True when the vanilla HUD element should be displayed. */
+    public static boolean isVanillaShown(String key) {
         switch (key) {
-            case "hideHealth": return hideHealth;
-            case "hideArmor": return hideArmor;
-            case "hideFood": return hideFood;
-            case "hideAir": return hideAir;
-            case "hideHotbar": return hideHotbar;
-            case "hideExp": return hideExp;
-            case "hideCrosshair": return hideCrosshair;
-            case "hideBoss": return hideBoss;
-            case "hidePotion": return hidePotion;
-            case "hideVignette": return hideVignette;
-            case "hidePortal": return hidePortal;
-            case "hideHelmet": return hideHelmet;
-            case "hideJumpbar": return hideJumpbar;
-            default: return false;
+            case "showHealth": return showHealth;
+            case "showArmor": return showArmor;
+            case "showFood": return showFood;
+            case "showAir": return showAir;
+            case "showHotbar": return showHotbar;
+            case "showExp": return showExp;
+            case "showCrosshair": return showCrosshair;
+            case "showBoss": return showBoss;
+            case "showPotion": return showPotion;
+            case "showVignette": return showVignette;
+            case "showPortal": return showPortal;
+            case "showHelmet": return showHelmet;
+            case "showJumpbar": return showJumpbar;
+            default: return true;
         }
+    }
+
+    /** Toggle a performance setting (most live in CAT_PERF; disableClouds lives in CAT_VISUAL). */
+    public static void togglePerf(String name) {
+        String cat = perfCategory(name);
+        boolean v = cfg.getBoolean(name, cat, false, "");
+        cfg.get(cat, name, v).set(!v);
+        cfg.save();
+        sync();
+    }
+
+    public static boolean isPerfOn(String name) {
+        return cfg.getBoolean(name, perfCategory(name), false, "");
+    }
+
+    private static String perfCategory(String name) {
+        if ("disableClouds".equals(name)) return CAT_VISUAL;
+        return CAT_PERF;
+    }
+
+    /** One-click: turn on every performance optimisation at once. */
+    public static void applyPerformanceMode() {
+        setBool(CAT_PERF, "dynamicFps", true);
+        setBool(CAT_PERF, "smartFps", true);
+        setBool(CAT_PERF, "fastGraphics", true);
+        setBool(CAT_PERF, "noSmoothLight", true);
+        setBool(CAT_PERF, "lowParticles", true);
+        setBool(CAT_VISUAL, "disableClouds", true);
+        cfg.save();
+        sync();
+    }
+
+    private static void setBool(String cat, String name, boolean v) {
+        cfg.get(cat, name, v).set(v);
     }
 
     public static void loadModulePositions() {

@@ -41,40 +41,22 @@ public class ClientState {
     public static float lastDamageDealt = 0;
     public static long lastDamageDealtTime = 0;
 
-    // FPS: read from Minecraft's own debugFPS field (identical to the F3 counter) via reflection,
-    // with a sliding-window fallback if reflection ever fails.
+    // FPS is self-counted every rendered frame and computed once per second. This is reliable and
+    // identical across versions (the old reflection read of debugFPS could get stuck at 1).
     public static int fps = 0;
-    private static Field debugFpsField = null;
-    private static boolean fpsReflectionReady = false;
     private static int frameCounter = 0;
     private static long fpsTimestamp = System.currentTimeMillis();
 
-    public static void refreshFps(Minecraft mc) {
-        if (!fpsReflectionReady) {
-            try {
-                Field f = mc.getClass().getDeclaredField("debugFPS");
-                f.setAccessible(true);
-                debugFpsField = f;
-                fpsReflectionReady = true;
-            } catch (Exception e) {
-                fpsReflectionReady = false;
-            }
-        }
-        if (fpsReflectionReady && debugFpsField != null) {
-            try {
-                fps = ((Integer) debugFpsField.get(mc)).intValue();
-            } catch (Exception e) {
-                fps = 0;
-            }
-        }
-        if (fps <= 0) {
-            frameCounter++;
-            long now = System.currentTimeMillis();
-            if (now - fpsTimestamp >= 1000L) {
-                fps = frameCounter;
-                frameCounter = 0;
-                fpsTimestamp = now;
-            }
+    /** Call once per rendered frame (from the HUD overlay event). Counts frames and reports the
+     *  smoothed frames-per-second every ~1s. */
+    public static void refreshFps() {
+        frameCounter++;
+        long now = System.currentTimeMillis();
+        long elapsed = now - fpsTimestamp;
+        if (elapsed >= 1000L) {
+            fps = (int) (frameCounter * 1000L / elapsed);
+            frameCounter = 0;
+            fpsTimestamp = now;
         }
     }
 
