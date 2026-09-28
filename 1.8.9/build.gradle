@@ -45,3 +45,10 @@ processResources {
         exclude "mcmod.info"
     }
 }
+
+jar {
+    manifest {
+        attributes 'FMLCorePlugin': 'com.lindedaoqwq.linclient.core.LinClientCorePlugin',
+                   'FMLCorePluginContainsFMLMod': 'true'
+    }
+}

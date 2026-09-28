@@ -38,6 +38,9 @@ public class ClientState {
     // Combat
     public static int combo = 0;
     public static long comboExpire = 0;
+    public static float reach = 0;            // last attack distance (blocks)
+    public static long reachExpire = 0;       // when reach/damage display expires
+    public static int ping = 0;               // self latency, ms
     public static float lastDamageDealt = 0;
     public static long lastDamageDealtTime = 0;
 

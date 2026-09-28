@@ -20,11 +20,17 @@ public class KeyBindings {
             "key.linclient.toggleHud", Keyboard.KEY_H, "key.categories.linclient");
     public static final KeyBinding TOGGLE_MOD = new KeyBinding(
             "key.linclient.toggleMod", Keyboard.KEY_NONE, "key.categories.linclient");
+    public static final KeyBinding ZOOM = new KeyBinding(
+            "key.linclient.zoom", Keyboard.KEY_C, "key.categories.linclient");
+    public static final KeyBinding FREELOOK = new KeyBinding(
+            "key.linclient.freelook", Keyboard.KEY_F, "key.categories.linclient");
 
     public static void register() {
         ClientRegistry.registerKeyBinding(OPEN_CONFIG);
         ClientRegistry.registerKeyBinding(OPEN_HOME);
         ClientRegistry.registerKeyBinding(TOGGLE_HUD);
         ClientRegistry.registerKeyBinding(TOGGLE_MOD);
+        ClientRegistry.registerKeyBinding(ZOOM);
+        ClientRegistry.registerKeyBinding(FREELOOK);
     }
 }
