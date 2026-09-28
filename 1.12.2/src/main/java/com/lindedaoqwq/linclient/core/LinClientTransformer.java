@@ -16,20 +16,26 @@ import org.objectweb.asm.Opcodes;
  *    16x16 lightmap texture when nothing relevant changed. Runs every tick; skipping most
  *    invocations removes constant light-value evaluation and GL texture upload cost.
  * 2. EntityRenderer.func_78482_e (hurtCameraEffect): No Hurt Cam module.
- * 3. ParticleManager.func_78873_a (addEffect): engine-level particle throttle.
+ * 3. EffectRenderer.func_78873_a (addEffect): engine-level particle throttle.
  */
 public class LinClientTransformer implements IClassTransformer {
+    public LinClientTransformer() {
+        System.out.println("[LinClient] coremod transformer registered");
+    }
+
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
         if (bytes == null) return null;
         try {
             if ("net.minecraft.client.renderer.EntityRenderer".equals(transformedName)) {
-                return patch(bytes, "func_78472_g", 0, "func_78482_e", 1);
+                byte[] out = patch(bytes, "func_78472_g", 0, "func_78482_e", 1);
+                System.out.println("[LinClient] EntityRenderer patched: lightmap-skip + nohurtcam armed");
+                return out;
             }
-            if ("net.minecraft.client.particle.ParticleManager".equals(transformedName)) {
-                return patch(bytes, "func_78873_a", 2, null, -1);
-            }
-        } catch (Throwable ignored) { }
+            // 1.12.2: EffectRenderer.addEffect has no SRG mapping; particle control uses the vanilla setting instead.
+        } catch (Throwable t) {
+            System.out.println("[LinClient] transform failed for " + transformedName + ": " + t);
+        }
         return bytes;
     }
 

@@ -63,7 +63,6 @@ linclient.input.cpsL=左键 CPS: %s
 linclient.input.cpsR=右键 CPS: %s
 linclient.input.left=左键: %s
 linclient.input.right=右键: %s
-linclient.input.sneak=潜行: %s
 linclient.input.sprint=疾跑: %s
 linclient.input.fps=帧率: %d
 

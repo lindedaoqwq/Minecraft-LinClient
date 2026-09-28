@@ -30,6 +30,14 @@ public class RenderUtils {
         drawRect(x + w - 1, y, 1, h, border);
     }
 
+    /** Outline only (no fill) — used for HUD edit-mode drag boxes. */
+    public static void drawRectOutline(int x, int y, int w, int h, int color) {
+        drawRect(x, y, w, 1, color);
+        drawRect(x, y + h - 1, w, 1, color);
+        drawRect(x, y, 1, h, color);
+        drawRect(x + w - 1, y, 1, h, color);
+    }
+
     /** Vertical gradient built from stacked 1px rects (version-safe, no Tessellator use). */
     public static void drawVerticalGradient(int x, int y, int w, int h, int top, int bottom) {
         if (h <= 0) return;

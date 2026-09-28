@@ -19,17 +19,27 @@ import org.objectweb.asm.Opcodes;
  * 3. EffectRenderer.func_78873_a (addEffect): engine-level particle throttle.
  */
 public class LinClientTransformer implements IClassTransformer {
+    public LinClientTransformer() {
+        System.out.println("[LinClient] coremod transformer registered");
+    }
+
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
         if (bytes == null) return null;
         try {
             if ("net.minecraft.client.renderer.EntityRenderer".equals(transformedName)) {
-                return patch(bytes, "func_78472_g", 0, "func_78482_e", 1);
+                byte[] out = patch(bytes, "func_78472_g", 0, "func_78482_e", 1);
+                System.out.println("[LinClient] EntityRenderer patched: lightmap-skip + nohurtcam armed");
+                return out;
             }
             if ("net.minecraft.client.particle.EffectRenderer".equals(transformedName)) {
-                return patch(bytes, "func_78873_a", 2, null, -1);
+                byte[] out = patch(bytes, "func_78873_a", 2, null, -1);
+                System.out.println("[LinClient] EffectRenderer patched: particle throttle armed");
+                return out;
             }
-        } catch (Throwable ignored) { }
+        } catch (Throwable t) {
+            System.out.println("[LinClient] transform failed for " + transformedName + ": " + t);
+        }
         return bytes;
     }
 

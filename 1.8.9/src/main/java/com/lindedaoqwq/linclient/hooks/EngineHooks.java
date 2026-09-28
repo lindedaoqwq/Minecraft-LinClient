@@ -12,11 +12,20 @@ public class EngineHooks {
     private static float lastGamma = Float.NaN;
     private static long lastLightmapMs = 0L;
     private static int particleCounter = 0;
+    private static boolean announced = false;
+
+    private static void announce() {
+        if (!announced) {
+            announced = true;
+            System.out.println("[LinClient] engine hooks live (called from patched vanilla code)");
+        }
+    }
 
     /** True = skip the lightmap recompute/texture-upload this tick. Recomputes on world/gamma
      *  change or at most every 250 ms so brightness adaptation stays imperceptible. */
     public static boolean skipLightmap() {
         try {
+            announce();
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.theWorld == null) return false;
             long now = System.currentTimeMillis();
@@ -32,7 +41,7 @@ public class EngineHooks {
     }
 
     public static boolean noHurtCam() {
-        try { return Modules.on("nohurtcam"); } catch (Throwable t) { return false; }
+        try { announce(); return Modules.on("nohurtcam"); } catch (Throwable t) { return false; }
     }
 
     /** Engine particle throttle: drops ~75% of new particles when the module is on. */

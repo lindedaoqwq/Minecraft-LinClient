@@ -1,10 +1,12 @@
 package com.lindedaoqwq.linclient.event;
 
 import com.lindedaoqwq.linclient.config.KeyBindings;
+import com.lindedaoqwq.linclient.config.ModConfig;
 import com.lindedaoqwq.linclient.core.Modules;
 import com.lindedaoqwq.linclient.gui.ClickGuiScreen;
 import com.lindedaoqwq.linclient.gui.LinMainMenu;
 import com.lindedaoqwq.linclient.hud.Hud;
+import com.lindedaoqwq.linclient.hud.HudEditorScreen;
 import com.lindedaoqwq.linclient.state.ClientState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -18,9 +20,11 @@ import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
+import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.client.event.RenderBlockOverlayEvent;
@@ -33,33 +37,35 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 /** All client-side Forge events. Client-only; nothing touches server behaviour. */
 public class ClientEvents {
     private float originalGamma = 0.5f;
     private boolean fullbrightActive = false;
+
+    // Visual toggle state.
     private boolean bobbingChanged = false;
 
-    private int origClouds = 0;
-    private boolean cloudsOff = false;
-    private boolean origFancy;
-    private boolean fastGraphicsActive = false;
-    private int origAo;
-    private boolean noSmoothActive = false;
-
+    // Smart FPS (unfocused throttle).
     private static Field fpsLimitField = null;
     private static boolean fpsLimitDiscovered = false;
     private int savedFpsLimit;
     private boolean focusLow = false;
 
+    // Reconnect.
     private long reconnectAt = 0;
     private GuiScreen lastDisconnectScreen = null;
 
+    // Damage tracking.
     private Entity pendingTarget = null;
     private float pendingHealth = -1F;
 
+    // Freelook.
     private float realYaw, realPitch, flYaw, flPitch;
     private boolean flActive = false;
+
+    private boolean langSynced = false;
 
     private static final int BTN_LINCLIENT = 997;
 
@@ -79,11 +85,14 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onRenderGui(RenderGameOverlayEvent.Post event) {
+        // Count one frame per ALL overlay pass (fires exactly once per rendered frame).
+        if (event.getType() == RenderGameOverlayEvent.ElementType.ALL) {
+            ClientState.refreshFps();
+        }
         Minecraft mc = Minecraft.getMinecraft();
-        ClientState.refreshFps();
         if (!ClientState.modActive || !ClientState.hudEnabled || !Modules.on("hud")) return;
         if (mc.currentScreen != null || mc.gameSettings.showDebugInfo) return;
-        Hud.render(mc);
+        Hud.render(mc, false);
     }
 
     @SubscribeEvent
@@ -98,11 +107,19 @@ public class ClientEvents {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
 
+        // Sync the config language once from the game language.
+        if (!langSynced) {
+            langSynced = true;
+            try {
+                ModConfig.setLang(mc.getLanguageManager().getCurrentLanguage().getLanguageCode());
+            } catch (Throwable ignored) { }
+        }
+
         if (KeyBindings.OPEN_CONFIG.isPressed() && mc.currentScreen == null) {
             mc.displayGuiScreen(new ClickGuiScreen());
         }
         if (KeyBindings.OPEN_HOME.isPressed() && mc.currentScreen == null) {
-            mc.displayGuiScreen(new LinMainMenu());
+            mc.displayGuiScreen(new HudEditorScreen());
         }
         if (KeyBindings.TOGGLE_MOD.isPressed()) {
             ClientState.modActive = !ClientState.modActive;
@@ -128,18 +145,18 @@ public class ClientEvents {
 
     private void applyMovement(Minecraft mc) {
         if (mc.player == null) return;
+        // Auto sprint.
         KeyBinding sprint = mc.gameSettings.keyBindSprint;
         boolean wantSprint = Modules.on("sprint") && mc.currentScreen == null
                 && mc.gameSettings.keyBindForward.isKeyDown()
                 && !mc.player.isSneaking() && !mc.player.capabilities.isFlying;
         KeyBinding.setKeyBindState(sprint.getKeyCode(), wantSprint);
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(),
-                Modules.on("sneak") && mc.currentScreen == null);
     }
 
     private void applyVisuals(Minecraft mc) {
         if (mc.world == null) return;
 
+        // Fullbright.
         if (Modules.on("fullbright")) {
             if (!fullbrightActive) {
                 originalGamma = mc.gameSettings.gammaSetting;
@@ -151,40 +168,12 @@ public class ClientEvents {
             fullbrightActive = false;
         }
 
-        if (Modules.on("clouds")) {
-            if (!cloudsOff) { origClouds = mc.gameSettings.clouds; cloudsOff = true; }
-            mc.gameSettings.clouds = 0;
-        } else if (cloudsOff) {
-            mc.gameSettings.clouds = origClouds;
-            cloudsOff = false;
+        // Particle control via the vanilla "minimal particles" setting (no SRG hook in 1.12.2).
+        if (Modules.on("particles") && mc.gameSettings.particleSetting != 2) {
+            mc.gameSettings.particleSetting = 2;
         }
 
-        if (Modules.on("fastgraphics")) {
-            if (!fastGraphicsActive) {
-                origFancy = mc.gameSettings.fancyGraphics;
-                fastGraphicsActive = true;
-                mc.renderGlobal.loadRenderers();
-            }
-            mc.gameSettings.fancyGraphics = false;
-        } else if (fastGraphicsActive) {
-            mc.gameSettings.fancyGraphics = origFancy;
-            fastGraphicsActive = false;
-            mc.renderGlobal.loadRenderers();
-        }
-
-        if (Modules.on("smoothlight")) {
-            if (!noSmoothActive) {
-                origAo = mc.gameSettings.ambientOcclusion;
-                noSmoothActive = true;
-                mc.renderGlobal.loadRenderers();
-            }
-            mc.gameSettings.ambientOcclusion = 0;
-        } else if (noSmoothActive) {
-            mc.gameSettings.ambientOcclusion = origAo;
-            noSmoothActive = false;
-            mc.renderGlobal.loadRenderers();
-        }
-
+        // Minimal view bobbing (vanilla off; restore when toggled off).
         if (Modules.on("bobbing") && mc.gameSettings.viewBobbing) {
             mc.gameSettings.viewBobbing = false;
             bobbingChanged = true;
@@ -193,11 +182,13 @@ public class ClientEvents {
             bobbingChanged = false;
         }
 
+        // Weather off.
         if (Modules.on("weather")) {
             mc.world.setRainStrength(0.0f);
             mc.world.setThunderStrength(0.0f);
         }
 
+        // Smart FPS: throttle when unfocused (reflection for version-safe field access).
         Field fl = findFpsLimitField(mc.gameSettings.getClass());
         boolean active = Display.isActive();
         if (Modules.on("smartfps") && fl != null) {
@@ -218,6 +209,7 @@ public class ClientEvents {
             focusLow = false;
         }
 
+        // Dynamic FPS: trade render distance for frame rate.
         if (Modules.on("dynfps")) {
             int fps = ClientState.fps;
             int cur = mc.gameSettings.renderDistanceChunks;
@@ -247,6 +239,7 @@ public class ClientEvents {
         } catch (Throwable ignored) { }
     }
 
+    /** Reflection helper: finds the ServerData stored inside GuiDisconnected and reconnects. */
     private static class ServerDataBox {
         static void connect(GuiScreen screen) throws Exception {
             for (Field f : screen.getClass().getDeclaredFields()) {
@@ -277,14 +270,14 @@ public class ClientEvents {
             ClientState.reachExpire = System.currentTimeMillis() + 2000L;
             pendingTarget = null;
         } else if (now > pendingHealth) {
-            pendingHealth = now;
+            pendingHealth = now;   // healed in between; keep waiting
         }
     }
 
     @SubscribeEvent
     public void onAttack(AttackEntityEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.player == null || event.getEntityPlayer() != mc.player) return;
+        if (mc.player == null || event.getEntity() != mc.player) return;
         if (!(event.getTarget() instanceof EntityLivingBase)) return;
         ClientState.reach = (float) mc.player.getDistance(event.getTarget());
         ClientState.reachExpire = System.currentTimeMillis() + 2000L;
@@ -376,19 +369,23 @@ public class ClientEvents {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glLineWidth(2.0F);
-        GL11.glColor4f(0.23F, 0.65F, 0.94F, 0.9F);
+        float[] rgb = argb(ModConfig.color("blockoutline", 0xFF3BA9F0));
+        GL11.glColor4f(rgb[0], rgb[1], rgb[2], 0.9F);
         GL11.glTranslated(-dx, -dy, -dz);
         GL11.glBegin(GL11.GL_LINES);
         float x1 = x - 0.005F, y1 = y - 0.005F, z1 = z - 0.005F;
         float x2 = x + 1.005F, y2 = y + 1.005F, z2 = z + 1.005F;
+        // bottom rectangle
         GL11.glVertex3f(x1, y1, z1); GL11.glVertex3f(x2, y1, z1);
         GL11.glVertex3f(x2, y1, z1); GL11.glVertex3f(x2, y1, z2);
         GL11.glVertex3f(x2, y1, z2); GL11.glVertex3f(x1, y1, z2);
         GL11.glVertex3f(x1, y1, z2); GL11.glVertex3f(x1, y1, z1);
+        // top rectangle
         GL11.glVertex3f(x1, y2, z1); GL11.glVertex3f(x2, y2, z1);
         GL11.glVertex3f(x2, y2, z1); GL11.glVertex3f(x2, y2, z2);
         GL11.glVertex3f(x2, y2, z2); GL11.glVertex3f(x1, y2, z2);
         GL11.glVertex3f(x1, y2, z2); GL11.glVertex3f(x1, y2, z1);
+        // verticals
         GL11.glVertex3f(x1, y1, z1); GL11.glVertex3f(x1, y2, z1);
         GL11.glVertex3f(x2, y1, z1); GL11.glVertex3f(x2, y2, z1);
         GL11.glVertex3f(x2, y1, z2); GL11.glVertex3f(x2, y2, z2);
@@ -400,6 +397,11 @@ public class ClientEvents {
         GL11.glPopMatrix();
     }
 
+    /** ARGB -> {r,g,b} floats in [0,1]. */
+    private static float[] argb(int c) {
+        return new float[]{((c >> 16) & 0xFF) / 255F, ((c >> 8) & 0xFF) / 255F, (c & 0xFF) / 255F};
+    }
+
     @SubscribeEvent
     public void onBlockOverlay(RenderBlockOverlayEvent event) {
         if (event.getOverlayType() == RenderBlockOverlayEvent.OverlayType.FIRE && Modules.on("lowfire")) {
@@ -408,10 +410,10 @@ public class ClientEvents {
     }
 
     @SubscribeEvent
-    public void onInitGuiPre(GuiScreenEvent.InitGuiEvent.Pre event) {
+    public void onGuiOpen(GuiOpenEvent event) {
+        // Clean, non-reentrant replacement of the vanilla main menu.
         if (event.getGui() instanceof GuiMainMenu) {
-            Minecraft.getMinecraft().displayGuiScreen(new LinMainMenu());
-            event.setCanceled(true);
+            event.setGui(new LinMainMenu());
         }
     }
 

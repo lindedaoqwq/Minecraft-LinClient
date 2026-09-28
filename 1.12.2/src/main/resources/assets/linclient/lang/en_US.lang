@@ -63,7 +63,6 @@ linclient.input.cpsL=CPS L: %s
 linclient.input.cpsR=CPS R: %s
 linclient.input.left=LMB: %s
 linclient.input.right=RMB: %s
-linclient.input.sneak=Sneak: %s
 linclient.input.sprint=Sprint: %s
 linclient.input.fps=FPS: %d
 
