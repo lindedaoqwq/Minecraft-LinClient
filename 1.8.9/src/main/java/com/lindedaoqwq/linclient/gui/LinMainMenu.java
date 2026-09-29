@@ -1,8 +1,10 @@
 package com.lindedaoqwq.linclient.gui;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
+import com.lindedaoqwq.linclient.util.FontUtils;
 import com.lindedaoqwq.linclient.util.RenderUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiLanguage;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiOptions;
@@ -13,8 +15,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Blue-themed main menu with ClickGUI-styled buttons (replaces the vanilla main menu). */
+/** Beautified blue-themed main menu. Title: LinClient, drawn with the bundled HarmonyOS font. */
 public class LinMainMenu extends GuiScreen {
+
+    private static final int A_SINGLE = 0, A_MULTI = 1, A_OPTIONS = 2, A_LANG = 3, A_QUIT = 4, A_LINCLIENT = 5;
 
     private static class Btn {
         int x, y, w, h, action;
@@ -24,10 +28,13 @@ public class LinMainMenu extends GuiScreen {
         }
     }
 
-    private static final int A_SINGLE = 0, A_MULTI = 1, A_OPTIONS = 2, A_LANG = 3, A_QUIT = 4, A_LINCLIENT = 5;
-
     private final List<Btn> buttons = new ArrayList<Btn>();
     private boolean zh;
+
+    // Blue palette.
+    private static final int BG_TOP = 0xFF071427, BG_BOTTOM = 0xFF0E2B52;
+    private static final int ACCENT = 0xFF3FA9FF, ACCENT_DEEP = 0xFF1B6FC4;
+    private static final int BTN_IDLE = 0xCC12305C, BTN_HOVER = 0xE61B4C86;
 
     @Override
     public boolean doesGuiPauseGame() { return false; }
@@ -35,50 +42,68 @@ public class LinMainMenu extends GuiScreen {
     @Override
     public void initGui() {
         zh = ModConfig.isZh();
-    }
-
-    private void layout() {
         buttons.clear();
         String[] labels = zh
                 ? new String[]{"\u5355\u4eba\u6e38\u620f", "\u591a\u4eba\u6e38\u620f", "\u9009\u9879",
                                "\u8bed\u8a00", "\u9000\u51fa\u6e38\u620f", "LinClient \u8bbe\u7f6e"}
                 : new String[]{"Singleplayer", "Multiplayer", "Options", "Language", "Quit Game",
                                "LinClient Settings"};
-        int bw = 240, bh = 30, gap = 8;
+        int bw = 260, bh = 32, gap = 10;
         int cx = (this.width - bw) / 2;
-        int y = this.height / 2 - 20;
+        int y = this.height / 2 - 34;
         buttons.add(new Btn(cx, y, bw, bh, labels[0], A_SINGLE)); y += bh + gap;
         buttons.add(new Btn(cx, y, bw, bh, labels[1], A_MULTI)); y += bh + gap;
         buttons.add(new Btn(cx, y, bw, bh, labels[2], A_OPTIONS)); y += bh + gap;
         buttons.add(new Btn(cx, y, bw, bh, labels[3], A_LANG)); y += bh + gap;
         buttons.add(new Btn(cx, y, bw, bh, labels[4], A_QUIT));
-        buttons.add(new Btn(8, this.height - 28, 150, 22, labels[5], A_LINCLIENT));
+        buttons.add(new Btn(14, this.height - 36, 150, 24, labels[5], A_LINCLIENT));
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        layout();
-        RenderUtils.drawVerticalGradient(0, 0, width, height, 0xFF0B1B33, 0xFF14345E);
+        FontRenderer fr = FontUtils.get();
 
+        // Backdrop: blue gradient + faint horizontal light bands.
+        RenderUtils.drawVerticalGradient(0, 0, width, height, BG_TOP, BG_BOTTOM);
+        for (int i = 0; i < 6; i++) {
+            RenderUtils.drawRect(0, height - 120 + i * 20, width, 1, 0x14FFFFFF);
+        }
+
+        // ---- Title: "LinClient" in the bundled HarmonyOS Sans Black ----
         GL11.glPushMatrix();
-        GL11.glScalef(2.0F, 2.0F, 2.0F);
-        fontRendererObj.drawStringWithShadow("LinClient", 12, 10, 0x66CCFF);
+        float scale = 3.0F;
+        GL11.glScalef(scale, scale, scale);
+        int tw = fr.getStringWidth("LinClient");
+        int tx = (int) ((width / 2F - tw * scale / 2F) / scale);
+        int ty = (int) ((height / 2F - 110F) / scale);
+        fr.drawStringWithShadow("LinClient", tx + 2, ty + 2, 0x50000000);
+        fr.drawStringWithShadow("LinClient", tx, ty, ACCENT);
         GL11.glPopMatrix();
-        fontRendererObj.drawStringWithShadow(zh
-                ? "\u5ba2\u6237\u7aef\u4f18\u5316 & PvP HUD"
-                : "Client-side optimisation & PvP HUD", 14, 34, 0x9FC2E8);
 
+        // Accent underline + subtitle.
+        int uw = (int) (tw * scale) + 40;
+        int ux = width / 2 - uw / 2;
+        int uy = height / 2 - 110 + 42;
+        RenderUtils.drawVerticalGradient(ux, uy, uw, 2, ACCENT, ACCENT_DEEP);
+        String sub = zh ? "\u5ba2\u6237\u7aef\u4f18\u5316 & PvP HUD" : "Client-side optimisation & PvP HUD";
+        fr.drawStringWithShadow(sub, width / 2 - fr.getStringWidth(sub) / 2, uy + 8, 0xFF8FB6DE);
+
+        // ---- Buttons ----
         for (Btn b : buttons) {
             boolean hover = mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h;
             boolean accent = b.action == A_LINCLIENT;
-            int bg = accent ? 0xFF1D4B7A : (hover ? 0xFF22406B : 0xE6172942);
-            Theme.roundRectBordered(b.x, b.y, b.w, b.h, bg, accent ? Theme.ACCENT : 0xFF0E1E33);
-            if (hover) Theme.roundRect(b.x, b.y, 3, b.h, Theme.ACCENT);
-            int tw = fontRendererObj.getStringWidth(b.label);
-            fontRendererObj.drawStringWithShadow(b.label, b.x + (b.w - tw) / 2, b.y + (b.h - 8) / 2,
-                    accent ? 0xBFDDFF : Theme.TEXT);
+            int bg = accent ? (hover ? 0xF01B6FC4 : 0xE01B4E8C) : (hover ? BTN_HOVER : BTN_IDLE);
+            RenderUtils.drawPanel(b.x, b.y, b.w, b.h, bg, hover ? ACCENT : 0xFF1E3A5F);
+            if (hover) RenderUtils.drawRect(b.x, b.y, 3, b.h, ACCENT);
+            int lw = fr.getStringWidth(b.label);
+            fr.drawStringWithShadow(b.label, b.x + (b.w - lw) / 2, b.y + (b.h - 8) / 2,
+                    hover ? 0xFFFFFFFF : 0xFFD6E7FA);
         }
-        fontRendererObj.drawStringWithShadow("LinClient 1.0.0", 4, 4, 0x557799);
+
+        // Footer
+        String ver = "LinClient 1.0.0";
+        fr.drawStringWithShadow(ver, width - fr.getStringWidth(ver) - 6, height - 12, 0xFF5A86B8);
+        fr.drawStringWithShadow("Minecraft", 6, height - 12, 0xFF5A86B8);
     }
 
     @Override
@@ -109,6 +134,6 @@ public class LinMainMenu extends GuiScreen {
     @Override
     protected void keyTyped(char c, int key) throws IOException {
         super.keyTyped(c, key);
-        if (key == 1) mc.displayGuiScreen(null);   // GuiOpenEvent re-routes back here
+        if (key == 1) mc.displayGuiScreen(null);
     }
 }
