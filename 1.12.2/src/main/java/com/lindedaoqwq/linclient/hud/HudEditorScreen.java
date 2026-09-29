@@ -1,6 +1,7 @@
 package com.lindedaoqwq.linclient.hud;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
+import com.lindedaoqwq.linclient.util.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import java.io.IOException;
@@ -22,8 +23,9 @@ public class HudEditorScreen extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        super.drawScreen(mouseX, mouseY, partialTicks);
-        // Render enabled modules with drag outlines.
+        // Dim backdrop (no super.drawScreen: works identically in-game and at the main menu).
+        RenderUtils.drawRect(0, 0, width, height, 0x60000000);
+        // Render enabled modules with drag outlines (placeholders when no live data).
         Hud.render(mc, true);
         String tip = zh ? "\u62d6\u52a8\u4ee5\u8c03\u6574\u4f4d\u7f6e\uff0c\u6309 ESC \u4fdd\u5b58\u5e76\u9000\u51fa"
                 : "Drag to move. Press ESC to save & close";

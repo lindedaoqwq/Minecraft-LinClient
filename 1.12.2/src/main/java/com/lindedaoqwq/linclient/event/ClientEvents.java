@@ -209,14 +209,13 @@ public class ClientEvents {
             focusLow = false;
         }
 
-        // Dynamic FPS: trade render distance for frame rate.
+        // Dynamic FPS (force-enabled): only lowers render distance on sustained low FPS,
+        // never touches the user's own setting otherwise.
         if (Modules.on("dynfps")) {
             int fps = ClientState.fps;
             int cur = mc.gameSettings.renderDistanceChunks;
-            if (fps < 30 && cur > 4) {
+            if (fps > 0 && fps < 30 && cur > 4) {
                 mc.gameSettings.renderDistanceChunks = 4;
-            } else if (fps > 60 && cur < 12) {
-                mc.gameSettings.renderDistanceChunks = 12;
             }
         }
     }

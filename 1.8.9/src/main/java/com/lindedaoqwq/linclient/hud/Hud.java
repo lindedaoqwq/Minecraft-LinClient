@@ -84,7 +84,7 @@ public final class Hud {
             bounds(id, p[0], p[1], wh[0], wh[1], edit);
         } else if (id.equals("armor")) {
             int[] xy = p[0] == -2 ? new int[]{sw - 8 - 80, sh - 8 - 16} : p;
-            int[] wh = renderArmor(mc, xy[0], xy[1]);
+            int[] wh = renderArmor(mc, xy[0], xy[1], edit);
             bounds(id, xy[0], xy[1], wh[0], wh[1], edit);
         } else if (id.equals("targethud")) {
             EntityLivingBase t = mc.pointedEntity instanceof EntityLivingBase ? (EntityLivingBase) mc.pointedEntity : null;
@@ -94,9 +94,14 @@ public final class Hud {
             }
         } else if (id.equals("potions")) {
             EntityPlayerSP pl = mc.thePlayer;
-            if (pl == null) return;
+            List<String> lines = pl != null ? potionLines(pl.getActivePotionEffects()) : null;
+            if (edit && (lines == null || lines.isEmpty())) {
+                lines = new ArrayList<String>();
+                lines.add(placeholder("potions"));
+            }
+            if (lines == null) return;
             int y = p[1];
-            for (String s : potionLines(pl.getActivePotionEffects())) {
+            for (String s : lines) {
                 int w = mc.fontRendererObj.getStringWidth(s) + 2;
                 mc.fontRendererObj.drawStringWithShadow(s, sw - 8 - w, y, 0xFFFFFF);
                 bounds(id, sw - 8 - w, y, w, 11, edit);
@@ -104,12 +109,23 @@ public final class Hud {
             }
         } else {
             String s = lineText(mc, id);
-            if (s == null) return;
+            if (s == null) {
+                if (!edit) return;
+                s = placeholder(id);
+            }
             int w = mc.fontRendererObj.getStringWidth(s) + 2;
             int x = p[0] == -1 ? sw - 8 - w : p[0];
             mc.fontRendererObj.drawStringWithShadow(s, x, p[1], 0xFFFFFF);
             bounds(id, x, p[1], w, 11, edit);
         }
+    }
+
+    /** Bilingual preview label used in HUD edit mode when live data is unavailable. */
+    private static String placeholder(String id) {
+        Modules.Def d = Modules.byId(id);
+        boolean zh = ModConfig.isZh();
+        String name = d == null ? id : (zh ? d.labelZh : d.label);
+        return zh ? "[" + name + " \u9884\u89c8]" : "[" + name + " preview]";
     }
 
     private static void bounds(String id, int x, int y, int w, int h, boolean edit) {
@@ -219,9 +235,14 @@ public final class Hud {
         return new int[]{b * 3 + g * 2, b * 3 + g * 2};
     }
 
-    private static int[] renderArmor(Minecraft mc, int x, int y) {
+    private static int[] renderArmor(Minecraft mc, int x, int y, boolean edit) {
         EntityPlayerSP p = mc.thePlayer;
-        if (p == null) return new int[]{80, 16};
+        if (p == null) {
+            // Main-menu preview box so the module stays draggable.
+            Theme.roundRect(x, y, 80, 18, 0xB3141420);
+            mc.fontRendererObj.drawStringWithShadow(placeholder("armor"), x + 3, y + 5, 0xFFFFFF);
+            return new int[]{80, 18};
+        }
         int slot = 14, pad = 2;
         RenderHelper.enableGUIStandardItemLighting();
         for (int i = 0; i < 4; i++) {

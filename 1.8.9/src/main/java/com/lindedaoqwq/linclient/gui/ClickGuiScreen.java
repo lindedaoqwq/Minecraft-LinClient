@@ -14,7 +14,7 @@ import java.util.List;
 
 /** ClickGUI matching the reference screenshot: dark rounded panel, left category
  *  sidebar with a selected highlight block, right rounded rows with pill toggles.
- *  Left-click toggles, right-click opens the colour picker. Supports zh/en. */
+ *  The panel itself is draggable and the list has a scrollbar thumb. zh/en labels. */
 public class ClickGuiScreen extends GuiScreen {
 
     private static class Region {
@@ -39,18 +39,32 @@ public class ClickGuiScreen extends GuiScreen {
     private int listTop, listBottom, rx, rw;
     private boolean zh;
 
+    // Panel dragging.
+    private int panX, panY;
+    private boolean dragPanel = false;
+    private int grabPX, grabPY;
+
+    // Scrollbar thumb dragging.
+    private boolean dragBar = false;
+    private int grabBY;
+
     @Override
     public boolean doesGuiPauseGame() { return false; }
 
     @Override
     public void initGui() {
         zh = ModConfig.isZh();
+        panX = 0;
+        panY = 0;
+        scrollOff = 0;
     }
 
     private int panelW() { return Math.min(500, width - 24); }
     private int panelH() { return Math.min(380, height - 24); }
-    private int px() { return (width - panelW()) / 2; }
-    private int py() { return (height - panelH()) / 2; }
+    private int px() { return clampPan((width - panelW()) / 2 + panX, 6, width - panelW() - 6); }
+    private int py() { return clampPan((height - panelH()) / 2 + panY, 6, height - panelH() - 6); }
+
+    private static int clampPan(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
     private int rowCount() {
         String c = Modules.CATS[selected];
@@ -58,6 +72,8 @@ public class ClickGuiScreen extends GuiScreen {
         for (Modules.Def d : Modules.ALL) if (d.cat.equals(c)) n++;
         return n;
     }
+
+    private int maxScroll() { return Math.max(0, rowCount() * 54 - (listBottom - listTop)); }
 
     private void buildRows() {
         rows.clear();
@@ -87,7 +103,7 @@ public class ClickGuiScreen extends GuiScreen {
 
         // ---- sidebar ----
         int sideX = px + 16, sideW = 150;
-        int cy = py + 20;
+        int cy = py + 34;
         for (int i = 0; i < Modules.CATS.length; i++) {
             boolean sel = i == selected;
             if (sel) Theme.roundRect(sideX, cy, sideW, 34, 0xFF3A3A3F);
@@ -120,12 +136,25 @@ public class ClickGuiScreen extends GuiScreen {
         }
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
+        // ---- scrollbar thumb ----
+        int content = rowCount() * 54;
+        int view = listBottom - listTop;
+        if (content > view) {
+            int barX = px + pw - 12;
+            int trackH = listBottom - listTop;
+            int thumbH = Math.max(24, trackH * view / content);
+            int thumbY = listTop + (trackH - thumbH) * scrollOff / maxScroll();
+            Theme.roundRect(barX, listTop, 5, trackH, 0xFF232327);
+            Theme.roundRect(barX, thumbY, 5, thumbH, 0xFF4A4A52);
+        }
+
         // ---- colour popup ----
         if (colorTarget != null) drawColorPopup();
 
-        // scroll hint
-        String hint = zh ? "\u5de6\u952e\u5f00\u5173 | \u53f3\u952e\u989c\u8272 | \u6eda\u8f6e\u7ffb\u9875 | ESC \u5173\u95ed"
-                : "LMB toggle | RMB colour | wheel scroll | ESC close";
+        // hint
+        String hint = zh
+                ? "\u5de6\u952e\u5f00\u5173 | \u53f3\u952e\u989c\u8272 | \u62d6\u52a8\u9876\u90e8\u79fb\u52a8\u9762\u677f | ESC \u5173\u95ed"
+                : "LMB toggle | RMB colour | drag top to move | ESC close";
         fontRendererObj.drawStringWithShadow(hint, px + 16, py + ph - 14, 0xFF707078);
     }
 
@@ -148,13 +177,15 @@ public class ClickGuiScreen extends GuiScreen {
         super.handleMouseInput();
         int d = Mouse.getEventDWheel();
         if (d != 0 && colorTarget == null) {
-            int content = rowCount() * 54;
-            int view = listBottom - listTop;
             scrollOff += d > 0 ? -34 : 34;
-            int max = Math.max(0, content - view);
-            if (scrollOff < 0) scrollOff = 0;
-            if (scrollOff > max) scrollOff = max;
+            clampScroll();
         }
+    }
+
+    private void clampScroll() {
+        int max = maxScroll();
+        if (scrollOff < 0) scrollOff = 0;
+        if (scrollOff > max) scrollOff = max;
     }
 
     @Override
@@ -172,7 +203,6 @@ public class ClickGuiScreen extends GuiScreen {
                     return;
                 }
             }
-            // default swatch (text area at the 8th slot)
             int dx = x + 14 + 3 * 44, dy = y + 34 + 3 * 44;
             if (mouseX >= dx && mouseX <= dx + 40 && mouseY >= dy && mouseY <= dy + 36) {
                 ModConfig.setColor(colorTarget, -1);
@@ -182,9 +212,24 @@ public class ClickGuiScreen extends GuiScreen {
             if (mouseX < x || mouseX > x + pw || mouseY < y || mouseY > y + ph) colorTarget = null;
             return;
         }
+        int px = px(), py = py(), pw = panelW(), ph = panelH();
+        // scrollbar thumb
+        int content = rowCount() * 54;
+        int view = listBottom - listTop;
+        if (content > view && mouseButton == 0) {
+            int barX = px + pw - 12;
+            int trackH = listBottom - listTop;
+            int thumbH = Math.max(24, trackH * view / content);
+            int thumbY = listTop + (trackH - thumbH) * scrollOff / maxScroll();
+            if (mouseX >= barX - 2 && mouseX <= barX + 8 && mouseY >= thumbY - 2 && mouseY <= thumbY + thumbH + 2) {
+                dragBar = true;
+                grabBY = mouseY - thumbY;
+                return;
+            }
+        }
         // sidebar categories
-        int sideX = px() + 16, sideW = 150;
-        int cy = py() + 20;
+        int sideX = px + 16, sideW = 150;
+        int cy = py + 34;
         for (int i = 0; i < Modules.CATS.length; i++) {
             if (mouseX >= sideX && mouseX <= sideX + sideW && mouseY >= cy && mouseY <= cy + 34) {
                 if (mouseButton == 0) { selected = i; scrollOff = 0; }
@@ -203,6 +248,34 @@ public class ClickGuiScreen extends GuiScreen {
             else if (mouseButton == 1) colorTarget = r.def.id;
             return;
         }
+        // drag the panel by its top strip (above sidebar/rows)
+        if (mouseButton == 0 && mouseY < py + 16 && mouseX >= px && mouseX <= px + pw) {
+            dragPanel = true;
+            grabPX = mouseX - px;
+            grabPY = mouseY - py;
+        }
+    }
+
+    @Override
+    protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        if (dragPanel) {
+            panX = mouseX - grabPX - (width - panelW()) / 2;
+            panY = mouseY - grabPY - (height - panelH()) / 2;
+        } else if (dragBar) {
+            int content = rowCount() * 54;
+            int view = listBottom - listTop;
+            int trackH = view;
+            int thumbH = Math.max(24, trackH * view / content);
+            int rel = mouseY - grabBY - listTop;
+            scrollOff = maxScroll() > 0 ? rel * maxScroll() / (trackH - thumbH) : 0;
+            clampScroll();
+        }
+    }
+
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        dragPanel = false;
+        dragBar = false;
     }
 
     @Override

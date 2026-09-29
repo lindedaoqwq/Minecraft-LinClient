@@ -12,7 +12,11 @@ public class Modules {
         }
     }
 
-    public static final String[] CATS = {"combat", "movement", "player", "render", "other", "client"};
+    public static final String[] CATS = {"combat", "movement", "player", "render", "other"};
+
+    /** Optimisation modules that are always on and hidden from the GUI. */
+    public static final java.util.Set<String> FORCE_ON = new java.util.HashSet<String>(
+            java.util.Arrays.asList("smartfps", "dynfps"));
 
     public static String catLabel(String cat, boolean zh) {
         if (zh) {
@@ -58,8 +62,8 @@ public class Modules {
         add("particles", "render", "Particle Control", "\u7c92\u5b50\u63a7\u5236");
         add("weather", "render", "No Weather", "\u65e0\u5929\u6c14");
         add("hud", "other", "HUD Master", "HUD \u603b\u5f00\u5173");
-        add("smartfps", "client", "Smart FPS (unfocused)", "\u667a\u80fd\u5e27\u7387\uff08\u5931\u7126\uff09");
-        add("dynfps", "client", "Dynamic FPS", "\u52a8\u6001\u5e27\u7387");
+        // Optimisation modules are force-enabled (not listed in the GUI):
+        // smartfps (unfocused throttle), dynfps (render distance guard).
     }
 
     public static Def byId(String id) {
@@ -67,5 +71,8 @@ public class Modules {
         return null;
     }
 
-    public static boolean on(String id) { return com.lindedaoqwq.linclient.config.ModConfig.on(id); }
+    public static boolean on(String id) {
+        if (FORCE_ON.contains(id)) return true;
+        return com.lindedaoqwq.linclient.config.ModConfig.on(id);
+    }
 }
