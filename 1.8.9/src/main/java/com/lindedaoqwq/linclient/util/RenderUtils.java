@@ -38,6 +38,20 @@ public class RenderUtils {
         drawRect(x + w - 1, y, 1, h, color);
     }
 
+    /** Rounded rectangle with an arbitrary corner radius, drawn row by row (version-safe).
+     *  radius = h/2 gives a full pill/capsule shape. */
+    public static void drawRounded(int x, int y, int w, int h, int color, int radius) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.min(radius, Math.min(h / 2, w / 2));
+        for (int i = 0; i < r; i++) {
+            int dy = r - i;
+            int inset = r - (int) Math.round(Math.sqrt((double) r * r - (double) dy * dy));
+            drawRect(x + inset, y + i, w - 2 * inset, 1, color);
+            drawRect(x + inset, y + h - 1 - i, w - 2 * inset, 1, color);
+        }
+        drawRect(x, y + r, w, h - 2 * r, color);
+    }
+
     /** Vertical gradient built from stacked 1px rects (version-safe, no Tessellator use). */
     public static void drawVerticalGradient(int x, int y, int w, int h, int top, int bottom) {
         if (h <= 0) return;
