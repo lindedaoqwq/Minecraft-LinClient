@@ -3,6 +3,7 @@ package com.lindedaoqwq.linclient.event;
 import com.lindedaoqwq.linclient.config.KeyBindings;
 import com.lindedaoqwq.linclient.config.ModConfig;
 import com.lindedaoqwq.linclient.core.Modules;
+import com.lindedaoqwq.linclient.hooks.EngineHooks;
 import com.lindedaoqwq.linclient.gui.ClickGuiScreen;
 import com.lindedaoqwq.linclient.gui.LinMainMenu;
 import com.lindedaoqwq.linclient.hud.Hud;
@@ -93,6 +94,7 @@ public class ClientEvents {
         // Count one frame per ALL overlay pass (fires exactly once per rendered frame).
         if (event.type == RenderGameOverlayEvent.ElementType.ALL) {
             ClientState.refreshFps();
+            EngineHooks.onFrame();
         }
         Minecraft mc = Minecraft.getMinecraft();
         if (!ClientState.modActive || !ClientState.hudEnabled || !Modules.on("hud")) return;
@@ -122,6 +124,7 @@ public class ClientEvents {
             ClientState.reachExpire = 0;
             ClientState.lastDamageDealt = 0;
             ClientState.lastDamageDealtTime = 0;
+            com.lindedaoqwq.linclient.hooks.EngineHooks.clearCaches();
         }
 
         // Sync the config language once from the game language.

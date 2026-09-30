@@ -131,6 +131,14 @@ public class Modules {
                 .set(Setting.slider("particles.keep", "\u7c92\u5b50\u4fdd\u7559(%)", "Particles kept (%)", 0, 100, 5, 25));
         add("weather", "render", "No Weather", "\u65e0\u5929\u6c14",
                 "\u4e0d\u518d\u4e0b\u96e8\u4e0b\u96ea", "No rain or snow");
+        add("signtext", "render", "Sign Text Culling", "\u544a\u793a\u724c\u6587\u5b57\u5254\u9664",
+                "\u8fdc\u5904\u770b\u4e0d\u6e05\u7684\u544a\u793a\u724c\u6587\u5b57\u4e0d\u518d\u7ed8\u5236",
+                "Skip sign text too far away to read")
+                .set(Setting.slider("signtext.dist", "\u6700\u8fdc\u8ddd\u79bb(\u683c)",
+                        "Max distance (blocks)", 16, 96, 8, 0));
+        add("armorcache", "render", "Armor Texture Cache", "\u76d4\u7532\u8d34\u56fe\u7f13\u5b58",
+                "\u7f13\u5b58\u76d4\u7532\u8d34\u56fe\u8def\u5f84\uff0c\u51cf\u5c11\u6bcf\u5e27\u5b57\u7b26\u4e32\u5f00\u9500",
+                "Memoise armour texture paths");
         add("hud", "other", "HUD Master", "HUD \u603b\u5f00\u5173",
                 "\u6240\u6709 HUD \u5143\u7d20\u7684\u603b\u5f00\u5173", "Master toggle for all HUD items");
         // Optimisation modules are force-enabled (not listed in the GUI):

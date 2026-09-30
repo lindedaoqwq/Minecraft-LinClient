@@ -47,6 +47,8 @@ public class ModConfig {
                 || id.equals("coords") || id.equals("armor") || id.equals("targethud")
                 || id.equals("crosshair") || id.equals("sprint") || id.equals("potions")
                 || id.equals("combo") || id.equals("reach")) return true;
+        // Engine-level optimisations that were measured to be pure wins; on by default.
+        if (id.equals("signtext") || id.equals("armorcache")) return true;
         return false;
     }
 
