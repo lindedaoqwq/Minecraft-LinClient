@@ -40,9 +40,9 @@ public class ClientState {
     public static long comboExpire = 0;
     public static float reach = 0;            // last attack distance (blocks)
     public static long reachExpire = 0;       // when reach/damage display expires
+    public static int ping = 0;               // self latency, ms
     public static float lastDamageDealt = 0;
     public static long lastDamageDealtTime = 0;
-    public static int ping = 0;               // self latency, ms
 
     // FPS is self-counted every rendered frame and computed once per second. This is reliable and
     // identical across versions (the old reflection read of debugFPS could get stuck at 1).
@@ -76,10 +76,12 @@ public class ClientState {
     }
 
     public static int leftCps() {
+        prune(leftClickTimes, System.currentTimeMillis());
         return leftClickTimes.size();
     }
 
     public static int rightCps() {
+        prune(rightClickTimes, System.currentTimeMillis());
         return rightClickTimes.size();
     }
 

@@ -76,10 +76,12 @@ public class ClientState {
     }
 
     public static int leftCps() {
+        prune(leftClickTimes, System.currentTimeMillis());
         return leftClickTimes.size();
     }
 
     public static int rightCps() {
+        prune(rightClickTimes, System.currentTimeMillis());
         return rightClickTimes.size();
     }
 

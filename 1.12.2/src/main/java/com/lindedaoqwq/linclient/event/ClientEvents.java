@@ -17,6 +17,7 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiOptions;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -60,6 +61,10 @@ public class ClientEvents {
     // Damage tracking.
     private Entity pendingTarget = null;
     private float pendingHealth = -1F;
+
+    // World-switch detection: resets session stats so nothing (ping/combo/reach)
+    // leaks from a multiplayer server into singleplayer.
+    private WorldClient lastWorld = null;
 
     // Freelook.
     private float realYaw, realPitch, flYaw, flPitch;
@@ -107,6 +112,18 @@ public class ClientEvents {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
 
+        // Reset session stats when the world changes (server -> singleplayer, disconnect, ...).
+        if (mc.world != lastWorld) {
+            lastWorld = mc.world;
+            ClientState.ping = 0;
+            ClientState.combo = 0;
+            ClientState.comboExpire = 0;
+            ClientState.reach = 0;
+            ClientState.reachExpire = 0;
+            ClientState.lastDamageDealt = 0;
+            ClientState.lastDamageDealtTime = 0;
+        }
+
         // Sync the config language once from the game language.
         if (!langSynced) {
             langSynced = true;
@@ -139,7 +156,7 @@ public class ClientEvents {
         ClientState.ping = 0;
         if (mc.getConnection() != null && mc.player != null) {
             NetworkPlayerInfo info = mc.getConnection().getPlayerInfo(mc.player.getUniqueID());
-            if (info != null) ClientState.ping = info.getResponseTime();
+            if (info != null && info.getResponseTime() > 0) ClientState.ping = info.getResponseTime();
         }
     }
 
@@ -166,11 +183,6 @@ public class ClientEvents {
         } else if (fullbrightActive) {
             mc.gameSettings.gammaSetting = originalGamma;
             fullbrightActive = false;
-        }
-
-        // Particle control via the vanilla "minimal particles" setting (no SRG hook in 1.12.2).
-        if (Modules.on("particles") && mc.gameSettings.particleSetting != 2) {
-            mc.gameSettings.particleSetting = 2;
         }
 
         // Minimal view bobbing (vanilla off; restore when toggled off).
@@ -228,11 +240,13 @@ public class ClientEvents {
         }
         if (mc.currentScreen != lastDisconnectScreen) {
             lastDisconnectScreen = mc.currentScreen;
-            reconnectAt = System.currentTimeMillis() + 5000L;
+            reconnectAt = System.currentTimeMillis()
+                    + (long) (ModConfig.value("reconnect.delay", 5F) * 1000F);
             return;
         }
         if (System.currentTimeMillis() < reconnectAt) return;
-        reconnectAt = System.currentTimeMillis() + 5000L;
+        reconnectAt = System.currentTimeMillis()
+                + (long) (ModConfig.value("reconnect.delay", 5F) * 1000F);
         try {
             ServerDataBox.connect(mc.currentScreen);
         } catch (Throwable ignored) { }
@@ -256,6 +270,12 @@ public class ClientEvents {
     }
 
     private void tickDamageTracking(Minecraft mc) {
+        long nowMs = System.currentTimeMillis();
+        // Combo resets after the configured timeout with no successful hit.
+        if (ClientState.combo > 0 && nowMs > ClientState.comboExpire) {
+            ClientState.combo = 0;
+            ClientState.comboExpire = 0;
+        }
         if (pendingTarget == null) return;
         if (!(pendingTarget instanceof EntityLivingBase) || ((Entity) pendingTarget).isDead) {
             pendingTarget = null;
@@ -264,9 +284,10 @@ public class ClientEvents {
         float now = ((EntityLivingBase) pendingTarget).getHealth();
         if (now < pendingHealth - 0.01F) {
             ClientState.lastDamageDealt = pendingHealth - now;
+            ClientState.lastDamageDealtTime = nowMs;
             ClientState.combo++;
-            ClientState.comboExpire = System.currentTimeMillis() + 2000L;
-            ClientState.reachExpire = System.currentTimeMillis() + 2000L;
+            ClientState.comboExpire = nowMs + (long) (ModConfig.value("combo.time", 2F) * 1000F);
+            ClientState.reachExpire = nowMs + (long) (ModConfig.value("reach.time", 2F) * 1000F);
             pendingTarget = null;
         } else if (now > pendingHealth) {
             pendingHealth = now;   // healed in between; keep waiting
@@ -279,9 +300,19 @@ public class ClientEvents {
         if (mc.player == null || event.getEntity() != mc.player) return;
         if (!(event.getTarget() instanceof EntityLivingBase)) return;
         ClientState.reach = (float) mc.player.getDistance(event.getTarget());
-        ClientState.reachExpire = System.currentTimeMillis() + 2000L;
+        ClientState.reachExpire = System.currentTimeMillis() + (long) (ModConfig.value("reach.time", 2F) * 1000F);
         pendingTarget = event.getTarget();
         pendingHealth = ((EntityLivingBase) event.getTarget()).getHealth();
+    }
+
+    /** Getting hit resets the combo counter. */
+    @SubscribeEvent
+    public void onLivingHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.player != null && event.getEntity() == mc.player) {
+            ClientState.combo = 0;
+            ClientState.comboExpire = 0;
+        }
     }
 
     private static Field fovSrcField, fovNewField;
@@ -300,7 +331,8 @@ public class ClientEvents {
         }
         try {
             if (fovSrcField != null && fovNewField != null) {
-                fovNewField.setFloat(event, fovSrcField.getFloat(event) * 0.2F);
+                float zoom = Math.max(1.5F, ModConfig.value("zoom.zoom", 5F));
+                fovNewField.setFloat(event, fovSrcField.getFloat(event) / zoom);
             }
         } catch (Exception ignored) { }
     }
@@ -367,7 +399,7 @@ public class ClientEvents {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glLineWidth(2.0F);
+        GL11.glLineWidth(Math.max(1F, ModConfig.value("blockoutline.width", 2F)));
         float[] rgb = argb(ModConfig.color("blockoutline", 0xFF3BA9F0));
         GL11.glColor4f(rgb[0], rgb[1], rgb[2], 0.9F);
         GL11.glTranslated(-dx, -dy, -dz);

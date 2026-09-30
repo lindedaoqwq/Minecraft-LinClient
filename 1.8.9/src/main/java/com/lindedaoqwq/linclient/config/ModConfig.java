@@ -5,12 +5,16 @@ import net.minecraftforge.common.config.Configuration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Config storage: module toggles, HUD module positions, module colors. */
+/** Config storage: module toggles, HUD module positions, module colors, module settings. */
 public class ModConfig {
     private static Configuration cfg;
     private static final Map<String, Boolean> toggles = new LinkedHashMap<String, Boolean>();
     private static final Map<String, int[]> positions = new LinkedHashMap<String, int[]>();
     private static final Map<String, Integer> colors = new LinkedHashMap<String, Integer>();
+    /** Numeric slider settings, e.g. "zoom.zoom" -> 5.0. */
+    private static final Map<String, Float> values = new LinkedHashMap<String, Float>();
+    /** Relative HUD positions (0..1 of screen size) so layouts survive resolution changes. */
+    private static final Map<String, float[]> relPositions = new LinkedHashMap<String, float[]>();
     public static String lang = "zh_CN";
 
     public static void init(Configuration c) {
@@ -19,9 +23,17 @@ public class ModConfig {
             toggles.put(d.id, c.get("modules", d.id, defaultOf(d.id)).getBoolean());
         }
         for (Modules.Def d : Modules.ALL) {
-            int x = c.get("positions", d.id + ".x", -1).getInt();
-            int y = c.get("positions", d.id + ".y", -1).getInt();
-            if (x >= 0 && y >= 0) positions.put(d.id, new int[]{x, y});
+            double fx = c.get("relpos", d.id + ".x", -1.0).getDouble(-1.0);
+            double fy = c.get("relpos", d.id + ".y", -1.0).getDouble(-1.0);
+            if (fx >= 0 && fy >= 0 && fx <= 1.001 && fy <= 1.001) {
+                relPositions.put(d.id, new float[]{(float) fx, (float) fy});
+            }
+        }
+        for (Modules.Def d : Modules.ALL) {
+            for (Modules.Setting s : d.settings) {
+                if (s.isColor) continue;
+                values.put(s.id, (float) c.get("settings", s.id, s.def).getDouble(s.def));
+            }
         }
         for (Modules.Def d : Modules.ALL) {
             int col = c.get("colors", d.id, -1).getInt();
@@ -42,9 +54,12 @@ public class ModConfig {
         for (Map.Entry<String, Boolean> e : toggles.entrySet()) {
             cfg.get("modules", e.getKey(), e.getValue()).set(e.getValue());
         }
-        for (Map.Entry<String, int[]> e : positions.entrySet()) {
-            cfg.get("positions", e.getKey() + ".x", -1).set(e.getValue()[0]);
-            cfg.get("positions", e.getKey() + ".y", -1).set(e.getValue()[1]);
+        for (Map.Entry<String, float[]> e : relPositions.entrySet()) {
+            cfg.get("relpos", e.getKey() + ".x", -1.0).set((double) e.getValue()[0]);
+            cfg.get("relpos", e.getKey() + ".y", -1.0).set((double) e.getValue()[1]);
+        }
+        for (Map.Entry<String, Float> e : values.entrySet()) {
+            cfg.get("settings", e.getKey(), e.getValue().doubleValue()).set(e.getValue().doubleValue());
         }
         for (Map.Entry<String, Integer> e : colors.entrySet()) {
             cfg.get("colors", e.getKey(), -1).set(e.getValue().intValue());
@@ -70,6 +85,25 @@ public class ModConfig {
 
     public static void setPos(String id, int x, int y) {
         positions.put(id, new int[]{x, y});
+        sync();
+    }
+
+    /** Relative HUD position (0..1 fractions of screen size); null = default layout. */
+    public static float[] relPos(String id) { return relPositions.get(id); }
+
+    public static void setRelPos(String id, float fx, float fy) {
+        relPositions.put(id, new float[]{fx, fy});
+        sync();
+    }
+
+    /** Numeric module setting; def when unset. */
+    public static float value(String id, float def) {
+        Float v = values.get(id);
+        return v != null ? v.floatValue() : def;
+    }
+
+    public static void setValue(String id, float v) {
+        values.put(id, v);
         sync();
     }
 

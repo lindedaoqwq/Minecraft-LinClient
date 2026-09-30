@@ -52,13 +52,16 @@ public class HudEditorScreen extends GuiScreen {
             }
         }
         if (dragging != null) {
-            ModConfig.setPos(dragging,
-                    clamp(mouseX - grabDx, 0, width - 10),
-                    clamp(mouseY - grabDy, 0, height - 12));
+            // Store positions as screen fractions so layouts adapt to any resolution/GUI scale.
+            ModConfig.setRelPos(dragging,
+                    clampF((mouseX - grabDx) / (float) width, 0F, 1F),
+                    clampF((mouseY - grabDy) / (float) height, 0F, 1F));
         }
     }
 
     private static int clamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+    private static float clampF(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
     @Override
     protected void mouseReleased(int mouseX, int mouseY, int state) {

@@ -44,11 +44,15 @@ public class EngineHooks {
         try { announce(); return Modules.on("nohurtcam"); } catch (Throwable t) { return false; }
     }
 
-    /** Engine particle throttle: drops ~75% of new particles when the module is on. */
+    /** Engine particle throttle: keeps only the configured percentage of new particles. */
     public static boolean skipParticle() {
         try {
             if (!Modules.on("particles")) return false;
-            return (particleCounter++ & 3) != 0;
+            float keep = com.lindedaoqwq.linclient.config.ModConfig.value("particles.keep", 25F);
+            if (keep >= 100F) return false;
+            if (keep <= 0F) return true;
+            long h = (particleCounter++ * 2654435761L) >>> 33;   // cheap, even pseudo-random
+            return (int) (h % 100L) >= (int) keep;
         } catch (Throwable t) { return false; }
     }
 }

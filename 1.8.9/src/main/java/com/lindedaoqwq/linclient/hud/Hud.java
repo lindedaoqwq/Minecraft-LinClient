@@ -49,10 +49,12 @@ public final class Hud {
         if (!editMode && Modules.on("crosshair")) renderCrosshair(mc);
     }
 
-    /** Position for a module: custom (stored) or default anchor. */
+    /** Position for a module: custom (stored relative, resolution-independent) or default anchor. */
     private static int[] posOf(Minecraft mc, String id) {
-        int[] cust = ModConfig.pos(id);
-        if (cust != null) return new int[]{clamp(cust[0], 0, sw - 20), clamp(cust[1], 0, sh - 12)};
+        float[] rel = ModConfig.relPos(id);
+        if (rel != null) {
+            return new int[]{clamp((int) (rel[0] * sw), 0, sw - 20), clamp((int) (rel[1] * sh), 0, sh - 12)};
+        }
         if (id.equals("pingfps") || id.equals("cps") || id.equals("coords")) {
             int y = 10;
             if (id.equals("cps")) y = Modules.on("pingfps") ? 21 : 10;
@@ -161,7 +163,9 @@ public final class Hud {
             return null;
         }
         if (id.equals("damage")) {
-            if (now < ClientState.reachExpire + 200L && ClientState.lastDamageDealt > 0) {
+            float secs = Math.max(1F, ModConfig.value("damage.time", 2F));
+            if (ClientState.lastDamageDealtTime > 0 && now < ClientState.lastDamageDealtTime + (long) (secs * 1000F)
+                    && ClientState.lastDamageDealt > 0) {
                 return String.format("\u00A7cDMG: \u00A7f-%.1f", ClientState.lastDamageDealt);
             }
             return null;
@@ -172,7 +176,7 @@ public final class Hud {
     private static String dirOf(float yaw) {
         yaw = ((yaw % 360F) + 360F) % 360F;
         String[] dirs = {"S", "SW", "W", "NW", "N", "NE", "E", "SE"};
-        return "\u00A77[" + dirs[(int) ((yaw + 22.5F) / 45F) & 7] + "\u00A7f";
+        return "\u00A77[" + dirs[(int) ((yaw + 22.5F) / 45F) & 7] + "]\u00A7f";
     }
 
     private static List<String> potionLines(Collection<PotionEffect> effects) {
@@ -272,7 +276,8 @@ public final class Hud {
     private static void renderCrosshair(Minecraft mc) {
         int cx = sw / 2, cy = sh / 2;
         int col = ModConfig.color("crosshair", 0xFF3AA6F0);
-        RenderUtils.drawRect(cx - 4, cy, 9, 1, col);
-        RenderUtils.drawRect(cx, cy - 4, 1, 9, col);
+        int r = Math.max(2, (int) ModConfig.value("crosshair.size", 4F));
+        RenderUtils.drawRect(cx - r, cy, r * 2 + 1, 1, col);
+        RenderUtils.drawRect(cx, cy - r, 1, r * 2 + 1, col);
     }
 }
