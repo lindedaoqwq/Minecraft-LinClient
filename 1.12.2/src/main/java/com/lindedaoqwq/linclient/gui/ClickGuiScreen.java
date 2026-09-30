@@ -3,9 +3,7 @@ package com.lindedaoqwq.linclient.gui;
 import com.lindedaoqwq.linclient.config.ModConfig;
 import com.lindedaoqwq.linclient.core.Modules;
 import com.lindedaoqwq.linclient.hud.HudEditorScreen;
-import com.lindedaoqwq.linclient.util.FontUtils;
 import com.lindedaoqwq.linclient.util.RenderUtils;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import org.lwjgl.input.Mouse;
@@ -16,25 +14,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** LinClient ClickGUI — own design, matching the blue main-menu branding.
- *  Centred deep-blue panel: brand + category rail on the left (icons + labels),
- *  two-column module cards on the right with a one-line description, a real
- *  toggle switch, and a gear for modules with settings (sliders / colour).
- *  Search field top-right, thin scrollbar, popup settings dialog. zh/en. */
+/** LinClient ClickGUI — structure inspired by modern glass-panel clients (FPSMaster
+ *  Edge-style rows, not a copy): centred panel, left sidebar (brand, search, category
+ *  nav with counts, HUD editor), main area with single-column module rows showing
+ *  name + description inline, iOS-style toggle and an expand chevron. Rows with
+ *  settings expand IN PLACE into a two-column settings grid (sliders / colour dots).
+ *  LinClient sky-blue branding is kept (accent), not the reference indigo. */
 public class ClickGuiScreen extends GuiScreen {
 
-    private static class Card {
+    private static class Row {      // a module row in the list
         int x, y, w, h;
         Modules.Def def;
-        Card(int x, int y, int w, int h, Modules.Def def) {
+        Row(int x, int y, int w, int h, Modules.Def def) {
             this.x = x; this.y = y; this.w = w; this.h = h; this.def = def;
         }
     }
 
-    private static class Row {   // row inside the settings popup
+    private static class Ctrl {     // a control row inside an expanded settings grid
         int x, y, w, h;
         Modules.Setting set;
-        Row(int x, int y, int w, int h, Modules.Setting set) {
+        Ctrl(int x, int y, int w, int h, Modules.Setting set) {
             this.x = x; this.y = y; this.w = w; this.h = h; this.set = set;
         }
     }
@@ -44,36 +43,38 @@ public class ClickGuiScreen extends GuiScreen {
             0xFF3ADF6E, 0xFF3ADFE0, 0xFF3AA6F0, 0xFFB03ADF
     };
 
-    // ---- LinClient blue palette (matches the main menu) ----
-    private static final int ACCENT      = 0xFF3FA9FF;
-    private static final int ACCENT_DEEP = 0xFF1B6FC4;
-    private static final int PANEL_BG    = 0xF60D1420;
-    private static final int PANEL_LINE  = 0xFF1D344F;
-    private static final int CARD_OFF    = 0xFF131D2C;
-    private static final int CARD_ON     = 0xFF152A42;
-    private static final int CARD_LINE   = 0xFF20304A;
-    private static final int CARD_LINE_ON= 0xFF2E5F8F;
-    private static final int TEXT        = 0xFFF0F4FA;
-    private static final int TEXT_SUB    = 0xFF7C8AA0;
-    private static final int TEXT_DIM    = 0xFF9DA2AB;
-    private static final int SWITCH_OFF  = 0xFF2A3648;
+    // ---- tokens (dark glass, LinClient sky-blue accent) ----
+    private static final int ACCENT       = 0xFF3FA9FF;
+    private static final int GLASS        = 0xF20C0D10;
+    private static final int STROKE       = 0x14FFFFFF;
+    private static final int STROKE_STRONG= 0x2EFFFFFF;
+    private static final int LAYER        = 0x0BFFFFFF;
+    private static final int LAYER_HOVER  = 0x14FFFFFF;
+    private static final int LAYER_ACTIVE = 0x1FFFFFFF;
+    private static final int TEXT         = 0xFFF2F2F2;
+    private static final int TEXT_2       = 0xFF9A9A9A;
+    private static final int TEXT_3       = 0xFF5C5C5C;
 
     private int selected = 0;
     private String search = "";
     private boolean searchFocus = false;
-    private String settingsOpen = null;
-    private String colorTarget = null;
+    private String expandedId = null;    // module whose settings grid is open
+    private String colorTarget = null;   // module id for the colour popup
     private int scrollOff = 0;
     private boolean zh;
 
-    private final List<Card> cards = new ArrayList<Card>();
-    private final List<Row> panelRows = new ArrayList<Row>();
-    private final Map<String, Row> sliderRows = new HashMap<String, Row>();
+    private final List<Row> rows = new ArrayList<Row>();
+    private final List<Ctrl> ctrls = new ArrayList<Ctrl>();
+    private final Map<String, Ctrl> sliderCtrls = new HashMap<String, Ctrl>();
+
+    private int px, py, pw, ph;
+    private final int sideW = 92;
+    private int listTop, listBottom;
 
     private boolean dragBar = false;
     private int grabBY;
     private String dragSlider = null;
-    private Row dragRow = null;
+    private Ctrl dragCtrl = null;
 
     @Override
     public boolean doesGuiPauseGame() { return false; }
@@ -84,28 +85,43 @@ public class ClickGuiScreen extends GuiScreen {
         scrollOff = 0;
     }
 
-    // ---------- panel layout ----------
+    // ---------- layout ----------
 
-    private int panelW() { return Math.min(720, width - 28); }
-    private int panelH() { return Math.min(430, height - 28); }
-    private int panelX() { return (width - panelW()) / 2; }
-    private int panelY() { return (height - panelH()) / 2; }
+    private int panelW() { return Math.min(470, width - 20); }
+    private int panelH() { return Math.min(300, height - 20); }
 
-    private int sideW = 178;
-    private int sideX() { return panelX() + 14; }
-    private int contentX() { return panelX() + sideW + 18; }
-    private int contentW() { return panelX() + panelW() - 18 - contentX(); }
-    private int cardsTop() { return panelY() + 56; }
-    private int cardsBottom() { return panelY() + panelH() - 16; }
+    private int contentX() { return px + sideW + 8; }
+    private int contentW() { return px + pw - 8 - contentX(); }
 
-    private int visibleCount() { return visibleDefs().size(); }
-
-    private int contentH() {
-        int n = visibleCount();
-        return ((n + 1) / 2) * (44 + 10);   // two columns
+    private int rowHeight(Modules.Def d) {
+        return d.id.equals(expandedId) ? 22 + settingsH(d) : 22;
     }
 
-    private int maxScroll() { return Math.max(0, contentH() - (cardsBottom() - cardsTop())); }
+    private int settingsH(Modules.Def d) {
+        if (d.settings.isEmpty()) return 0;
+        int rows2 = (d.settings.size() + 1) / 2;
+        return 1 + 4 + rows2 * 19 + 3;   // divider + pad + grid + pad
+    }
+
+    private int contentH() {
+        int h = 0;
+        for (Modules.Def d : visibleDefs()) h += rowHeight(d) + 3;
+        return h;
+    }
+
+    private int maxScroll() { return Math.max(0, contentH() - (listBottom - listTop)); }
+
+    private int catCount(String cat) {
+        int n = 0;
+        for (Modules.Def d : Modules.ALL) if (d.cat.equals(cat)) n++;
+        return n;
+    }
+
+    private int catEnabled(String cat) {
+        int n = 0;
+        for (Modules.Def d : Modules.ALL) if (d.cat.equals(cat) && Modules.on(d.id)) n++;
+        return n;
+    }
 
     private List<Modules.Def> visibleDefs() {
         List<Modules.Def> out = new ArrayList<Modules.Def>();
@@ -121,243 +137,280 @@ public class ClickGuiScreen extends GuiScreen {
         return out;
     }
 
-    private void buildCards() {
-        cards.clear();
-        List<Modules.Def> list = visibleDefs();
-        int cw = (contentW() - 10) / 2;
-        int row = 0, col = 0;
-        for (Modules.Def d : list) {
-            int cx = contentX() + col * (cw + 10);
-            int cy = cardsTop() + row * (44 + 10) - scrollOff;
-            cards.add(new Card(cx, cy, cw, 44, d));
-            col++;
-            if (col == 2) { col = 0; row++; }
+    private void buildRows() {
+        rows.clear();
+        ctrls.clear();
+        sliderCtrls.clear();
+        int y = listTop - scrollOff;
+        int x0 = contentX();
+        for (Modules.Def d : visibleDefs()) {
+            int h = rowHeight(d);
+            rows.add(new Row(x0, y, contentW(), h, d));
+            if (d.id.equals(expandedId) && !d.settings.isEmpty()) {
+                int gy = y + 22 + 1 + 4;
+                int colW = (contentW() - 12 - 6) / 2;
+                for (int i = 0; i < d.settings.size(); i++) {
+                    Modules.Setting s = d.settings.get(i);
+                    int cx = x0 + 6 + (i % 2) * (colW + 6);
+                    Ctrl c = new Ctrl(cx, gy + (i / 2) * 19, colW, 19, s);
+                    ctrls.add(c);
+                    if (!s.isColor) sliderCtrls.put(s.id, c);
+                }
+            }
+            y += h + 3;
         }
+    }
+
+    private void clampScroll() {
+        int max = maxScroll();
+        if (scrollOff < 0) scrollOff = 0;
+        if (scrollOff > max) scrollOff = max;
     }
 
     // ---------- drawing ----------
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        buildCards();
+        px = (width - panelW()) / 2;
+        py = (height - panelH()) / 2;
+        pw = panelW();
+        ph = panelH();
+        listTop = py + 30;
+        listBottom = py + ph - 8;
+        buildRows();
         clampScroll();
-        FontRenderer brand = FontUtils.get();
 
-        RenderUtils.drawRect(0, 0, width, height, 0x8C04070C);
-        int px = panelX(), py = panelY(), pw = panelW(), ph = panelH();
-        RenderUtils.drawRounded(px, py, pw, ph, PANEL_LINE, 10);
-        RenderUtils.drawRounded(px + 1, py + 1, pw - 2, ph - 2, PANEL_BG, 9);
-        // subtle top accent strip
-        RenderUtils.drawRounded(px + 14, py, 56, 3, ACCENT, 2);
+        // world veil + glass panel
+        RenderUtils.drawRect(0, 0, width, height, 0x94000000);
+        RenderUtils.drawRounded(px, py, pw, ph, STROKE_STRONG, 9);
+        RenderUtils.drawRounded(px + 1, py + 1, pw - 2, ph - 2, GLASS, 8);
 
-        // ---- sidebar: brand ----
-        GL11.glPushMatrix();
-        float bs = 1.25F;
-        GL11.glScalef(bs, bs, bs);
-        int bx = (int) ((sideX() + 2) / bs);
-        int by = (int) ((py + 18) / bs);
-        brand.drawStringWithShadow("LinClient", bx, by, ACCENT);
-        GL11.glPopMatrix();
-        RenderUtils.drawVerticalGradient(sideX() + 3, py + 40, 46, 2, ACCENT, ACCENT_DEEP);
-        fontRenderer.drawStringWithShadow("1.0.0", sideX() + 58, py + 36, 0xFF51617A);
+        // ---- sidebar ----
+        RenderUtils.drawRect(px + sideW, py + 6, 1, ph - 12, STROKE);
+        drawSidebar(mouseX, mouseY);
 
-        // ---- sidebar: categories ----
-        int cy = py + 58;
-        for (int i = 0; i < Modules.CATS.length; i++) {
-            boolean sel = search.trim().isEmpty() && i == selected;
-            boolean hover = mouseX >= sideX() && mouseX <= sideX() + sideW - 6
-                    && mouseY >= cy && mouseY <= cy + 32;
-            if (sel) {
-                RenderUtils.drawRounded(sideX(), cy, sideW - 6, 32, 0xFF16273C, 7);
-                RenderUtils.drawRect(sideX(), cy + 6, 3, 20, ACCENT);
-            } else if (hover) {
-                RenderUtils.drawRounded(sideX(), cy, sideW - 6, 32, 0xFF101B2B, 7);
-            }
-            drawIcon(Modules.CATS[i], sideX() + 14, cy + 8, 16,
-                    sel ? ACCENT : (hover ? 0xFFC9D2DE : 0xFF6F7C90));
-            fontRenderer.drawStringWithShadow(Modules.catLabel(Modules.CATS[i], zh),
-                    sideX() + 40, cy + 12, sel ? TEXT : (hover ? 0xFFC9D2DE : TEXT_SUB));
-            cy += 38;
-        }
+        // ---- main head ----
+        boolean searching = !search.trim().isEmpty();
+        String title = searching ? (zh ? "\u641c\u7d22" : "Search")
+                : Modules.catLabel(Modules.CATS[selected], zh);
+        fontRenderer.drawStringWithShadow(title, contentX(), py + 9, TEXT);
+        String sub = searching
+                ? (visibleDefs().size() + (zh ? " \u4e2a\u7ed3\u679c" : " results"))
+                : (visibleDefs().size() + (zh ? " \u4e2a\u6a21\u5757 \u00b7 \u5df2\u542f\u7528 "
+                    + catEnabled(Modules.CATS[selected]) + " \u4e2a"
+                    : " modules \u00b7 " + catEnabled(Modules.CATS[selected]) + " on"));
+        fontRenderer.drawStringWithShadow(sub, contentX() + 10
+                + fontRenderer.getStringWidth(title), py + 11, TEXT_2);
 
-        // ---- sidebar: HUD layout editor button ----
-        int hy = py + ph - 46;
-        boolean hHover = mouseX >= sideX() && mouseX <= sideX() + sideW - 6
-                && mouseY >= hy && mouseY <= hy + 32;
-        RenderUtils.drawRounded(sideX(), hy, sideW - 6, 32,
-                hHover ? 0xFF1B3A5C : 0xFF101B2B, 7);
-        drawIcon("hudedit", sideX() + 14, hy + 8, 16, hHover ? ACCENT : 0xFF6F7C90);
-        fontRenderer.drawStringWithShadow(zh ? "HUD \u5e03\u5c40\u7f16\u8f91" : "HUD Layout Editor",
-                sideX() + 40, hy + 12, hHover ? TEXT : TEXT_SUB);
-        // sidebar divider
-        RenderUtils.drawRect(panelX() + sideW + 4, py + 14, 1, ph - 28, PANEL_LINE);
-
-        // ---- content header: category title + search ----
-        String title = search.trim().isEmpty()
-                ? Modules.catLabel(Modules.CATS[selected], zh)
-                : (zh ? "\u641c\u7d22" : "Search");
-        fontRenderer.drawStringWithShadow(title, contentX(), py + 22, TEXT);
-        String count = visibleCount() + (zh ? " \u9879" : " modules");
-        fontRenderer.drawStringWithShadow(count, contentX() + 14
-                + fontRenderer.getStringWidth(title) + 10, py + 24, 0xFF51617A);
-        drawSearchField(mouseX, mouseY);
-
-        // ---- cards (clipped) ----
-        int cx0 = contentX(), cx1 = panelX() + panelW() - 10;
+        // ---- module rows (clipped) ----
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         int f = new ScaledResolution(mc).getScaleFactor();
-        GL11.glScissor(cx0 * f, mc.displayHeight - cardsBottom() * f,
-                (cx1 - cx0) * f, (cardsBottom() - cardsTop()) * f);
-        for (Card c : cards) {
-            if (c.y + c.h < cardsTop() - 8 || c.y > cardsBottom() + 8) continue;
-            drawCard(c, mouseX, mouseY);
+        GL11.glScissor(contentX() * f, mc.displayHeight - listBottom * f,
+                (px + pw - 8 - contentX()) * f, (listBottom - listTop) * f);
+        for (Row r : rows) {
+            if (r.y + r.h < listTop - 6 || r.y > listBottom + 6) continue;
+            drawModuleRow(r, mouseX, mouseY);
         }
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
         // ---- scrollbar ----
         int content = contentH();
-        int view = cardsBottom() - cardsTop();
+        int view = listBottom - listTop;
         if (content > view) {
-            int barX = panelX() + panelW() - 8;
-            int thumbH = Math.max(30, view * view / content);
-            int thumbY = cardsTop() + (view - thumbH) * scrollOff / maxScroll();
-            RenderUtils.drawRounded(barX, thumbY, 4, thumbH, 0xFF2E5F8F, 2);
+            int barX = px + pw - 7;
+            int thumbH = Math.max(18, view * view / content);
+            int thumbY = listTop + (view - thumbH) * scrollOff / maxScroll();
+            RenderUtils.drawRounded(barX, thumbY, 3, thumbH, 0x38FFFFFF, 1);
         }
 
-        // ---- popups ----
-        if (settingsOpen != null) drawSettingsPopup(mouseX, mouseY);
+        // ---- colour popup ----
         if (colorTarget != null) drawColorPopup();
-
-        // ---- footer hint ----
-        String hint = zh ? "\u70b9\u51fb\u5361\u7247\u5f00/\u5173 \u00b7 \u9f7f\u8f6e\u8fdb\u5165\u914d\u7f6e \u00b7 ESC \u5173\u95ed"
-                : "Click a card to toggle \u00b7 gear for settings \u00b7 ESC to close";
-        fontRenderer.drawStringWithShadow(hint, px + 16, py + ph - 12, 0xFF4A5A72);
     }
 
-    private void drawCard(Card c, int mouseX, int mouseY) {
-        boolean on = Modules.on(c.def.id);
-        boolean hover = mouseX >= c.x && mouseX <= c.x + c.w && mouseY >= c.y && mouseY <= c.y + c.h;
-        RenderUtils.drawRounded(c.x, c.y, c.w, c.h, on ? CARD_LINE_ON : CARD_LINE, 8);
-        RenderUtils.drawRounded(c.x + 1, c.y + 1, c.w - 2, c.h - 2, on ? CARD_ON : CARD_OFF, 7);
-        if (on) RenderUtils.drawRect(c.x + 1, c.y + 7, 2, c.h - 14, ACCENT);
+    private void drawSidebar(int mouseX, int mouseY) {
+        int sx = px + 7;
+        int pad = 7;
+        // brand: gradient-ish mark + name + version
+        int mX = sx, mY = py + 8;
+        RenderUtils.drawRounded(mX, mY, 12, 12, ACCENT, 4);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(mX + 3.5F, mY + 2.5F, 0);
+        fontRenderer.drawStringWithShadow("L", 0, 0, 0xFFFFFFFF);
+        GL11.glPopMatrix();
+        fontRenderer.drawStringWithShadow("LinClient", mX + 16, mY + 0, TEXT);
+        fontRenderer.drawStringWithShadow("1.0.0", mX + 16, mY + 8, TEXT_3);
 
-        // name + description
-        fontRenderer.drawStringWithShadow(Modules.label(c.def, zh), c.x + 12, c.y + 8, TEXT);
-        String desc = Modules.desc(c.def, zh);
-        if (fontRenderer.getStringWidth(desc) > c.w - 24) {
-            desc = fontRenderer.trimStringToWidth(desc, c.w - 28) + "...";
-        }
-        fontRenderer.drawStringWithShadow(desc, c.x + 12, c.y + 22, on ? 0xFF8FA8C4 : TEXT_SUB);
-
-        // gear (modules with settings), bottom-right
-        if (!c.def.settings.isEmpty()) {
-            boolean gh = mouseX >= c.x + c.w - 26 && mouseX <= c.x + c.w - 12
-                    && mouseY >= c.y + c.h - 22 && mouseY <= c.y + c.h - 8;
-            drawGear(c.x + c.w - 19, c.y + c.h - 15, gh
-                    || (settingsOpen != null && settingsOpen.equals(c.def.id))
-                    ? 0xFFE8EAEE : 0xFF6F7C90);
-        }
-
-        // toggle switch, top-right
-        int sw = 34, sh2 = 14;
-        int sx = c.x + c.w - sw - 10, sy = c.y + 8;
-        RenderUtils.drawRounded(sx, sy, sw, sh2, on ? ACCENT : SWITCH_OFF, sh2 / 2);
-        int k = sh2 - 4;
-        int kx = on ? sx + sw - k - 2 : sx + 2;
-        RenderUtils.drawRounded(kx, sy + 2, k, k, 0xFFF2F5F9, k / 2);
-        if (hover) RenderUtils.drawRounded(c.x, c.y, c.w, c.h, 0x18FFFFFF, 8);
-    }
-
-    private void drawSearchField(int mouseX, int mouseY) {
-        int w = 170, h = 22;
-        int x = panelX() + panelW() - w - 16, y = panelY() + 18;
-        RenderUtils.drawRounded(x, y, w, h, searchFocus ? 0xFF2E5F8F : 0xFF20304A, h / 2);
-        RenderUtils.drawRounded(x + 1, y + 1, w - 2, h - 2, 0xFF0F1928, h / 2 - 1);
-        // magnifier
+        // search (capsule)
+        int swH = 15;
+        int sy = py + 26;
+        RenderUtils.drawRounded(sx, sy, sideW - 2 * pad, swH,
+                searchFocus ? ACCENT : STROKE, swH / 2);
+        RenderUtils.drawRounded(sx + 1, sy + 1, sideW - 2 * pad - 2, swH - 2,
+                0x40000000, swH / 2 - 1);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(0.55F, 0.62F, 0.72F, 1F);
-        GL11.glLineWidth(1.2F);
+        GL11.glColor4f(0.45F, 0.5F, 0.56F, 1F);
+        GL11.glLineWidth(1F);
         GL11.glBegin(GL11.GL_LINES);
-        float cx0 = x + 11, cy0 = y + h / 2 - 1.5F, r = 3.2F;
+        float mcx = sx + 8, mcy = sy + swH / 2F - 1F, mr = 2.6F;
         for (int i = 0; i < 8; i++) {
             float a1 = (float) (i * Math.PI / 4), a2 = (float) ((i + 1) * Math.PI / 4);
-            vertex(cx0 + r * (float) Math.cos(a1), cy0 + r * (float) Math.sin(a1),
-                    cx0 + r * (float) Math.cos(a2), cy0 + r * (float) Math.sin(a2));
+            vertex(mcx + mr * (float) Math.cos(a1), mcy + mr * (float) Math.sin(a1),
+                    mcx + mr * (float) Math.cos(a2), mcy + mr * (float) Math.sin(a2));
         }
-        vertex(cx0 + 2.5F, cy0 + 2.5F, cx0 + 6.5F, cy0 + 6.5F);
+        vertex(mcx + 2, mcy + 2, mcx + 5, mcy + 5);
         GL11.glEnd();
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1F, 1F, 1F, 1F);
         String show = search.isEmpty() && !searchFocus
                 ? (zh ? "\u641c\u7d22..." : "Search...") : search;
-        int tcol = search.isEmpty() && !searchFocus ? 0xFF4A5A72 : TEXT;
-        fontRenderer.drawStringWithShadow(show, x + 24, y + (h - 8) / 2, tcol);
+        fontRenderer.drawStringWithShadow(show, sx + 13, sy + 4,
+                search.isEmpty() && !searchFocus ? TEXT_3 : TEXT);
         if (searchFocus && (System.currentTimeMillis() / 500) % 2 == 0) {
-            int tx = x + 24 + fontRenderer.getStringWidth(search);
-            RenderUtils.drawRect(tx + 1, y + 5, 1, h - 10, TEXT);
+            int tx = sx + 13 + fontRenderer.getStringWidth(search);
+            RenderUtils.drawRect(tx + 1, sy + 3, 1, swH - 6, TEXT);
         }
+
+        // category nav with counts
+        int ny = py + 48;
+        for (int i = 0; i < Modules.CATS.length; i++) {
+            boolean sel = search.trim().isEmpty() && i == selected;
+            boolean hover = mouseX >= sx && mouseX <= sx + sideW - 2 * pad
+                    && mouseY >= ny && mouseY <= ny + 16;
+            if (sel) {
+                RenderUtils.drawRounded(sx, ny, sideW - 2 * pad, 16, ACCENT, 8);
+            } else if (hover) {
+                RenderUtils.drawRounded(sx, ny, sideW - 2 * pad, 16, LAYER_HOVER, 8);
+            }
+            drawIcon(Modules.CATS[i], sx + 5, ny + 4, 8,
+                    sel ? 0xFFFFFFFF : (hover ? 0xFFD0D4DA : TEXT_2));
+            String label = Modules.catLabel(Modules.CATS[i], zh);
+            fontRenderer.drawStringWithShadow(label, sx + 16, ny + 4,
+                    sel ? 0xFFFFFFFF : (hover ? 0xFFE8EAEE : TEXT_2));
+            String n = String.valueOf(catCount(Modules.CATS[i]));
+            fontRenderer.drawStringWithShadow(n, sx + sideW - 2 * pad - 2
+                    - fontRenderer.getStringWidth(n), ny + 4,
+                    sel ? 0xCCFFFFFF : TEXT_3);
+            ny += 18;
+        }
+
+        // bottom: HUD layout editor
+        int hy = py + ph - 24;
+        boolean hHover = mouseX >= sx && mouseX <= sx + sideW - 2 * pad
+                && mouseY >= hy && mouseY <= hy + 16;
+        if (hHover) RenderUtils.drawRounded(sx, hy, sideW - 2 * pad, 16, LAYER_HOVER, 8);
+        drawIcon("hudedit", sx + 5, hy + 4, 8, hHover ? 0xFFD0D4DA : TEXT_2);
+        fontRenderer.drawStringWithShadow(zh ? "HUD \u5e03\u5c40" : "HUD Layout",
+                sx + 16, hy + 4, hHover ? 0xFFE8EAEE : TEXT_2);
     }
 
-    private int settingsPopupH(Modules.Def d) {
-        int h = 0;
-        for (Modules.Setting s : d.settings) h += s.isColor ? 30 : 40;
-        return h;
-    }
+    private void drawModuleRow(Row r, int mouseX, int mouseY) {
+        Modules.Def d = r.def;
+        boolean expanded = d.id.equals(expandedId);
+        boolean on = Modules.on(d.id);
+        boolean hover = mouseX >= r.x && mouseX <= r.x + r.w && mouseY >= r.y && mouseY <= r.y + 22;
+        int h = expanded ? r.h : 22;
+        int bg = expanded ? 0x2E000000 : (hover ? LAYER_HOVER : LAYER);
+        RenderUtils.drawRounded(r.x, r.y, r.w, h, expanded ? STROKE_STRONG : 0x0AFFFFFF, 5);
+        RenderUtils.drawRounded(r.x + 1, r.y + 1, r.w - 2, h - 2, bg, 4);
 
-    private void drawSettingsPopup(int mouseX, int mouseY) {
-        Modules.Def d = Modules.byId(settingsOpen);
-        if (d == null) { settingsOpen = null; return; }
-        panelRows.clear();
-        sliderRows.clear();
-        int pw = Math.min(300, width - 80);
-        int ph = 40 + settingsPopupH(d) + 12;
-        int x = (width - pw) / 2, y = (height - ph) / 2;
-        RenderUtils.drawRect(0, 0, width, height, 0x58000000);
-        RenderUtils.drawRounded(x, y, pw, ph, CARD_LINE_ON, 10);
-        RenderUtils.drawRounded(x + 1, y + 1, pw - 2, ph - 2, 0xF8142236, 9);
-        fontRenderer.drawStringWithShadow(Modules.label(d, zh), x + 18, y + 13, TEXT);
+        // name + inline description
+        String name = Modules.label(d, zh);
+        fontRenderer.drawStringWithShadow(name, r.x + 7, r.y + 7, TEXT);
+        String desc = Modules.desc(d, zh);
+        int nx = r.x + 7 + fontRenderer.getStringWidth(name) + 6;
+        int maxDesc = r.w - 100 - (nx - r.x);
+        if (maxDesc > 20) {
+            if (fontRenderer.getStringWidth(desc) > maxDesc) {
+                desc = fontRenderer.trimStringToWidth(desc, maxDesc - 4) + "...";
+            }
+            fontRenderer.drawStringWithShadow(desc, nx, r.y + 7,
+                    expanded ? TEXT_2 : TEXT_3);
+        }
 
-        int ry = y + 38;
-        for (Modules.Setting s : d.settings) {
-            if (s.isColor) {
-                int cur = ModConfig.color(d.id, s.colorDef);
-                fontRenderer.drawStringWithShadow(s.text(zh), x + 18, ry + 9, TEXT_DIM);
-                RenderUtils.drawRounded(x + pw - 68, ry + 3, 50, 22, 0xFF2E5F8F, 8);
-                RenderUtils.drawRounded(x + pw - 69, ry + 4, 48, 20, cur, 7);
-                panelRows.add(new Row(x, ry, pw, 28, s));
-                ry += 30;
-            } else {
-                float v = ModConfig.value(s.id, s.def);
-                float frac = Math.max(0F, Math.min(1F, (v - s.min) / (s.max - s.min)));
-                fontRenderer.drawStringWithShadow(s.text(zh), x + 18, ry + 2, TEXT_DIM);
-                String val = fmt(s, v);
-                fontRenderer.drawStringWithShadow(val, x + pw - 18
-                        - fontRenderer.getStringWidth(val), ry + 2, TEXT);
-                int tx = x + 18, tw = pw - 36, ty = ry + 20;
-                RenderUtils.drawRounded(tx, ty, tw, 5, 0xFF20304A, 2);
-                RenderUtils.drawRounded(tx, ty, Math.max(4, (int) (tw * frac)), 5, ACCENT, 2);
-                RenderUtils.drawRounded(tx + (int) (tw * frac) - 4, ty - 4, 8, 13, 0xFFF2F5F9, 4);
-                Row r = new Row(tx, ty - 8, tw, 20, s);
-                panelRows.add(r);
-                sliderRows.put(s.id, r);
-                ry += 40;
+        // iOS-style switch (right)
+        int swW = 18, swH = 10;
+        int swX = r.x + r.w - swW - 16, swY = r.y + 6;
+        RenderUtils.drawRounded(swX, swY, swW, swH, on ? ACCENT : LAYER_ACTIVE, swH / 2);
+        int k = swH - 2;
+        int kx = on ? swX + swW - k - 1 : swX + 1;
+        RenderUtils.drawRounded(kx, swY + 1, k, k, 0xFFEAECEF, k / 2);
+
+        // chevron: > when collapsed, v when expanded
+        int chX = r.x + r.w - 11, chY = r.y + 8;
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glColor4f(0.55F, 0.55F, 0.58F, 1F);
+        GL11.glLineWidth(1.2F);
+        GL11.glBegin(GL11.GL_LINES);
+        if (expanded) {
+            vertex(chX - 2.5F, chY, chX, chY + 3);
+            vertex(chX, chY + 3, chX + 2.5F, chY);
+        } else {
+            vertex(chX, chY - 2.5F, chX + 2.5F, chY);
+            vertex(chX + 2.5F, chY, chX, chY + 2.5F);
+        }
+        GL11.glEnd();
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glColor4f(1F, 1F, 1F, 1F);
+
+        // expanded settings grid (two columns)
+        if (expanded && !d.settings.isEmpty()) {
+            int divY = r.y + 22;
+            RenderUtils.drawRect(r.x + 4, divY, r.w - 8, 1, STROKE);
+            for (Ctrl c : ctrls) {
+                if (c.set.isColor) {
+                    fontRenderer.drawStringWithShadow(c.set.text(zh), c.x, c.y + 1, TEXT_2);
+                    int cur = ModConfig.color(d.id, c.set.colorDef);
+                    String hex = String.format("#%06X", cur & 0xFFFFFF);
+                    fontRenderer.drawStringWithShadow(hex, c.x + c.w - 24
+                            - fontRenderer.getStringWidth(hex), c.y + 1, TEXT_3);
+                    RenderUtils.drawRounded(c.x + c.w - 9, c.y, 9, 9, 0x40FFFFFF, 4);
+                    RenderUtils.drawRounded(c.x + c.w - 8, c.y + 1, 7, 7, cur, 3);
+                } else {
+                    float v = ModConfig.value(c.set.id, c.set.def);
+                    float frac = Math.max(0F, Math.min(1F, (v - c.set.min) / (c.set.max - c.set.min)));
+                    fontRenderer.drawStringWithShadow(c.set.text(zh), c.x, c.y + 1, TEXT_2);
+                    String val = fmt(c.set, v);
+                    fontRenderer.drawStringWithShadow(val, c.x + c.w
+                            - fontRenderer.getStringWidth(val), c.y + 1, TEXT_2);
+                    int tX = c.x, tW = c.w - 26, tY = c.y + 12;
+                    RenderUtils.drawRounded(tX, tY, tW, 3, LAYER_ACTIVE, 1);
+                    RenderUtils.drawRounded(tX, tY, Math.max(2, (int) (tW * frac)), 3, ACCENT, 1);
+                    RenderUtils.drawRounded(tX + (int) (tW * frac) - 3, tY - 2, 7, 7,
+                            0xFFEAECEF, 3);
+                }
             }
         }
     }
 
     private void drawColorPopup() {
-        int pw = 200, ph = 40 + 4 * 44 + 14;
-        int x = (width - pw) / 2, y = (height - ph) / 2;
-        RenderUtils.drawRounded(x, y, pw, ph, CARD_LINE_ON, 10);
-        RenderUtils.drawRounded(x + 1, y + 1, pw - 2, ph - 2, 0xF8142236, 9);
-        String title = zh ? "\u989c\u8272" : "Colour";
-        fontRenderer.drawStringWithShadow(title, x + 14, y + 12, TEXT);
-        for (int i = 0; i < PALETTE.length; i++) {
-            int cx = x + 14 + (i % 4) * 44, cyy = y + 34 + (i / 4) * 44;
-            RenderUtils.drawRounded(cx, cyy, 36, 36, PALETTE[i], 8);
+        Modules.Def d = Modules.byId(colorTarget);
+        int cur;
+        int def = 0xFF3AA6F0;
+        if (d != null) {
+            for (Modules.Setting s : d.settings) {
+                if (s.isColor) { def = s.colorDef; break; }
+            }
         }
-        String def = zh ? "\u9ed8\u8ba4" : "Default";
-        fontRenderer.drawStringWithShadow(def, x + 14 + 3 * 44 + 4, y + 40 + 3 * 44, TEXT_DIM);
+        cur = ModConfig.color(colorTarget, def);
+        int pw2 = 190, ph2 = 30 + 4 * 40 + 16;
+        int x = (width - pw2) / 2, y = (height - ph2) / 2;
+        RenderUtils.drawRect(0, 0, width, height, 0x64000000);
+        RenderUtils.drawRounded(x, y, pw2, ph2, STROKE_STRONG, 9);
+        RenderUtils.drawRounded(x + 1, y + 1, pw2 - 2, ph2 - 2, GLASS, 8);
+        String title = zh ? "\u989c\u8272" : "Colour";
+        fontRenderer.drawStringWithShadow(title, x + 12, y + 10, TEXT);
+        String hex = String.format("#%06X", cur & 0xFFFFFF);
+        fontRenderer.drawStringWithShadow(hex, x + pw2 - 12
+                - fontRenderer.getStringWidth(hex), y + 10, TEXT_2);
+        for (int i = 0; i < PALETTE.length; i++) {
+            int cx = x + 12 + (i % 4) * 42, cyy = y + 28 + (i / 4) * 40;
+            RenderUtils.drawRounded(cx, cyy, 34, 34, PALETTE[i], 7);
+        }
+        String defS = zh ? "\u9ed8\u8ba4" : "Default";
+        int dx = x + 12 + 3 * 42 + 4;
+        RenderUtils.drawRounded(dx, y + 28 + 3 * 40, 34, 34, LAYER, 7);
+        RenderUtils.drawRounded(dx + 1, y + 29 + 3 * 40, 32, 32, 0x12000000, 6);
+        fontRenderer.drawStringWithShadow(defS, dx, y + 28 + 3 * 40 + 40, TEXT_3);
     }
 
     private String fmt(Modules.Setting s, float v) {
@@ -365,7 +418,7 @@ public class ClickGuiScreen extends GuiScreen {
         return String.format("%.1f", v);
     }
 
-    // ---------- vector icons (16x16 logical space) ----------
+    // ---------- vector icons (16 logical px, scalable) ----------
 
     private void drawIcon(String id, float x, float y, float s, int argb) {
         float r = ((argb >> 16) & 0xFF) / 255F, g = ((argb >> 8) & 0xFF) / 255F,
@@ -375,7 +428,7 @@ public class ClickGuiScreen extends GuiScreen {
         GL11.glScalef(s / 16F, s / 16F, 1F);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(r, g, b, a);
-        GL11.glLineWidth(1.4F);
+        GL11.glLineWidth(2F);
         GL11.glBegin(GL11.GL_LINES);
         if (id.equals("combat")) {                 // crossed swords
             vertex(3, 3, 13, 13); vertex(13, 3, 3, 13);
@@ -418,28 +471,6 @@ public class ClickGuiScreen extends GuiScreen {
         GL11.glVertex2f(x, y);
     }
 
-    private void drawGear(float cx, float cy, int argb) {
-        float r = ((argb >> 16) & 0xFF) / 255F, g = ((argb >> 8) & 0xFF) / 255F,
-                b = (argb & 0xFF) / 255F, a = ((argb >> 24) & 0xFF) / 255F;
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(r, g, b, a);
-        GL11.glLineWidth(1.2F);
-        GL11.glBegin(GL11.GL_LINES);
-        for (int i = 0; i < 8; i++) {
-            float a1 = (float) (i * Math.PI / 4), a2 = (float) ((i + 1) * Math.PI / 4);
-            vertex(cx + 2.6F * (float) Math.cos(a1), cy + 2.6F * (float) Math.sin(a1),
-                    cx + 2.6F * (float) Math.cos(a2), cy + 2.6F * (float) Math.sin(a2));
-        }
-        for (int i = 0; i < 6; i++) {
-            float an = (float) (i * Math.PI / 3 + Math.PI / 12);
-            vertex(cx + 3.4F * (float) Math.cos(an), cy + 3.4F * (float) Math.sin(an),
-                    cx + 4.6F * (float) Math.cos(an), cy + 4.6F * (float) Math.sin(an));
-        }
-        GL11.glEnd();
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(1F, 1F, 1F, 1F);
-    }
-
     // ---------- input ----------
 
     @Override
@@ -447,15 +478,9 @@ public class ClickGuiScreen extends GuiScreen {
         super.handleMouseInput();
         int d = Mouse.getEventDWheel();
         if (d != 0 && colorTarget == null) {
-            scrollOff += d > 0 ? -36 : 36;
+            scrollOff += d > 0 ? -18 : 18;
             clampScroll();
         }
-    }
-
-    private void clampScroll() {
-        int max = maxScroll();
-        if (scrollOff < 0) scrollOff = 0;
-        if (scrollOff > max) scrollOff = max;
     }
 
     @Override
@@ -464,118 +489,116 @@ public class ClickGuiScreen extends GuiScreen {
 
         // colour popup first
         if (colorTarget != null) {
-            int pw = 200, ph = 40 + 4 * 44 + 14;
-            int x = (width - pw) / 2, y = (height - ph) / 2;
+            int pw2 = 190, ph2 = 30 + 4 * 40 + 16;
+            int x = (width - pw2) / 2, y = (height - ph2) / 2;
             for (int i = 0; i < PALETTE.length; i++) {
-                int cx = x + 14 + (i % 4) * 44, cyy = y + 34 + (i / 4) * 44;
-                if (mouseX >= cx && mouseX <= cx + 36 && mouseY >= cyy && mouseY <= cyy + 36) {
+                int cx = x + 12 + (i % 4) * 42, cyy = y + 28 + (i / 4) * 40;
+                if (mouseX >= cx && mouseX <= cx + 34 && mouseY >= cyy && mouseY <= cyy + 34) {
                     ModConfig.setColor(colorTarget, PALETTE[i]);
                     colorTarget = null;
                     return;
                 }
             }
-            int dx = x + 14 + 3 * 44, dy = y + 34 + 3 * 44;
-            if (mouseX >= dx && mouseX <= dx + 40 && mouseY >= dy && mouseY <= dy + 36) {
+            int dx = x + 12 + 3 * 42 + 4;
+            if (mouseX >= dx && mouseX <= dx + 34 && mouseY >= y + 28 + 3 * 40
+                    && mouseY <= y + 28 + 3 * 40 + 34) {
                 ModConfig.setColor(colorTarget, -1);
                 colorTarget = null;
                 return;
             }
-            if (mouseX < x || mouseX > x + pw || mouseY < y || mouseY > y + ph) colorTarget = null;
+            if (mouseX < x || mouseX > x + pw2 || mouseY < y || mouseY > y + ph2) colorTarget = null;
             return;
         }
 
-        // settings popup
-        if (settingsOpen != null) {
-            Modules.Def d = Modules.byId(settingsOpen);
-            if (d == null) { settingsOpen = null; return; }
-            int pw = Math.min(300, width - 80);
-            int ph = 40 + settingsPopupH(d) + 12;
-            int x = (width - pw) / 2, y = (height - ph) / 2;
-            if (mouseX >= x && mouseX <= x + pw && mouseY >= y && mouseY <= y + ph) {
-                for (Row r : panelRows) {
-                    if (mouseX < r.x || mouseX > r.x + r.w || mouseY < r.y || mouseY > r.y + r.h) continue;
-                    if (r.set.isColor) {
-                        colorTarget = d.id;
-                    } else {
-                        dragSlider = r.set.id;
-                        dragRow = r;
-                        applySlider(r, mouseX);
-                    }
-                    return;
-                }
-                return;   // inside the panel: keep open
-            }
-            settingsOpen = null;
-            return;
-        }
-
-        int px = panelX(), py = panelY(), pw = panelW(), ph = panelH();
+        int sx = px + 7;
+        int pad = 7;
 
         // search field
-        int sw = 170, sh = 22;
-        int sx = px + pw - sw - 16, sy = py + 18;
-        if (mouseButton == 0 && mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh) {
+        int swH = 15;
+        int sy = py + 26;
+        if (mouseButton == 0 && mouseX >= sx && mouseX <= sx + sideW - 2 * pad
+                && mouseY >= sy && mouseY <= sy + swH) {
             searchFocus = true;
             return;
         }
         searchFocus = false;
 
-        // sidebar categories
-        int cy = py + 58;
+        // category nav
+        int ny = py + 48;
         for (int i = 0; i < Modules.CATS.length; i++) {
-            if (mouseButton == 0 && mouseX >= sideX() && mouseX <= sideX() + sideW - 6
-                    && mouseY >= cy && mouseY <= cy + 32) {
+            if (mouseButton == 0 && mouseX >= sx && mouseX <= sx + sideW - 2 * pad
+                    && mouseY >= ny && mouseY <= ny + 16) {
                 selected = i;
                 search = "";
                 scrollOff = 0;
+                expandedId = null;
                 return;
             }
-            cy += 38;
+            ny += 18;
         }
-        // HUD layout editor button
-        int hy = py + ph - 46;
-        if (mouseButton == 0 && mouseX >= sideX() && mouseX <= sideX() + sideW - 6
-                && mouseY >= hy && mouseY <= hy + 32) {
+        // HUD layout editor
+        int hy = py + ph - 24;
+        if (mouseButton == 0 && mouseX >= sx && mouseX <= sx + sideW - 2 * pad
+                && mouseY >= hy && mouseY <= hy + 16) {
             mc.displayGuiScreen(new HudEditorScreen());
             return;
         }
 
         // scrollbar
         int content = contentH();
-        int view = cardsBottom() - cardsTop();
+        int view = listBottom - listTop;
         if (content > view && mouseButton == 0) {
-            int barX = px + pw - 8;
-            int thumbH = Math.max(30, view * view / content);
-            int thumbY = cardsTop() + (view - thumbH) * scrollOff / maxScroll();
-            if (mouseX >= barX - 3 && mouseX <= barX + 7
-                    && mouseY >= thumbY - 3 && mouseY <= thumbY + thumbH + 3) {
+            int barX = px + pw - 7;
+            int thumbH = Math.max(18, view * view / content);
+            int thumbY = listTop + (view - thumbH) * scrollOff / maxScroll();
+            if (mouseX >= barX - 2 && mouseX <= barX + 5
+                    && mouseY >= thumbY - 2 && mouseY <= thumbY + thumbH + 2) {
                 dragBar = true;
                 grabBY = mouseY - thumbY;
                 return;
             }
         }
 
-        // cards: gear zone first, then toggle
-        if (mouseButton == 0 || mouseButton == 1) {
-            for (Card c : cards) {
-                if (mouseX < c.x || mouseX > c.x + c.w || mouseY < c.y || mouseY > c.y + c.h) continue;
-                if (mouseY < cardsTop() - 4 || mouseY > cardsBottom() + 4) continue;
-                boolean gearZone = !c.def.settings.isEmpty()
-                        && mouseX >= c.x + c.w - 26 && mouseX <= c.x + c.w - 12
-                        && mouseY >= c.y + c.h - 22 && mouseY <= c.y + c.h - 8;
-                if (gearZone) {
-                    settingsOpen = c.def.id;
+        // module rows: head click = expand (or toggle when no settings);
+        // switch = toggle; colour dot = palette
+        for (Row r : rows) {
+            if (mouseX < r.x || mouseX > r.x + r.w || mouseY < r.y || mouseY > r.y + r.h) continue;
+            if (mouseY < listTop - 2 || mouseY > listBottom + 2) continue;
+            Modules.Def d = r.def;
+            if (mouseY <= r.y + 22) {
+                int swW = 18;
+                int swX = r.x + r.w - swW - 16;
+                if (mouseX >= swX - 2 && mouseX <= swX + swW + 2) {
+                    ModConfig.toggle(d.id);
+                    return;
+                }
+                if (!d.settings.isEmpty()) {
+                    expandedId = d.id.equals(expandedId) ? null : d.id;
+                    clampScroll();
                 } else {
-                    ModConfig.toggle(c.def.id);
+                    ModConfig.toggle(d.id);
                 }
                 return;
             }
+            for (Ctrl c : ctrls) {
+                if (mouseX < c.x || mouseX > c.x + c.w || mouseY < c.y || mouseY > c.y + c.h) continue;
+                if (c.set.isColor) {
+                    colorTarget = d.id;
+                } else {
+                    dragSlider = c.set.id;
+                    dragCtrl = c;
+                    applySlider(c, mouseX);
+                }
+                return;
+            }
+            return;
         }
     }
 
-    private void applySlider(Row r, int mouseX) {
-        Modules.Setting s = r.set;
-        float t = (mouseX - r.x) / (float) r.w;
+    private void applySlider(Ctrl c, int mouseX) {
+        Modules.Setting s = c.set;
+        int tW = c.w - 26;
+        float t = (mouseX - c.x) / (float) tW;
         t = Math.max(0F, Math.min(1F, t));
         float v = s.min + t * (s.max - s.min);
         v = Math.round(v / s.step) * s.step;
@@ -587,13 +610,13 @@ public class ClickGuiScreen extends GuiScreen {
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         if (dragBar) {
             int content = contentH();
-            int view = cardsBottom() - cardsTop();
-            int thumbH = Math.max(30, view * view / content);
-            int rel = mouseY - grabBY - cardsTop();
+            int view = listBottom - listTop;
+            int thumbH = Math.max(18, view * view / content);
+            int rel = mouseY - grabBY - listTop;
             scrollOff = maxScroll() > 0 ? rel * maxScroll() / (view - thumbH) : 0;
             clampScroll();
-        } else if (dragSlider != null && dragRow != null) {
-            applySlider(dragRow, mouseX);
+        } else if (dragSlider != null && dragCtrl != null) {
+            applySlider(dragCtrl, mouseX);
         }
     }
 
@@ -601,7 +624,7 @@ public class ClickGuiScreen extends GuiScreen {
     protected void mouseReleased(int mouseX, int mouseY, int state) {
         dragBar = false;
         dragSlider = null;
-        dragRow = null;
+        dragCtrl = null;
     }
 
     @Override
@@ -609,7 +632,6 @@ public class ClickGuiScreen extends GuiScreen {
         super.keyTyped(c, key);
         if (key == 1) {   // ESC
             if (colorTarget != null) colorTarget = null;
-            else if (settingsOpen != null) settingsOpen = null;
             else if (searchFocus) searchFocus = false;
             else mc.displayGuiScreen(null);
             return;
