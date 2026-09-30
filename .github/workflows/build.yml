@@ -34,21 +34,58 @@ jobs:
           distribution: temurin
           java-version: 8
 
+      # Cache the whole Gradle user home: ForgeGradle's buildscript jars (incl.
+      # fernflower, which once failed mid-download), the MC jars + SRG mappings it
+      # fetches, and the per-version Gradle wrapper distributions. Keyed per matrix
+      # dir because the two versions use different Gradle (2.14.1 / 4.9) and MC.
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-v1-${{ matrix.dir }}-${{ hashFiles(format('{0}/build.gradle', matrix.dir), format('{0}/gradle/wrapper/gradle-wrapper.properties', matrix.dir)) }}
+          restore-keys: |
+            gradle-v1-${{ matrix.dir }}-
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Build. We capture the FULL gradle output to a log file (and stream it to
-      # the console via tee) so a complete log is available even when the build
-      # fails. If gradle fails, this step fails (job turns red) but the follow-up
-      # report/log-upload steps run with `if: always()` so logs are never lost.
-      # Each version uses its own Gradle Wrapper (Gradle 4.9 for 1.12.2,
-      # Gradle 2.14.1 for 1.8.9) pinned via ForgeGradle 2.x.
+      # Build, with up to 3 attempts. The Forge maven occasionally drops
+      # connections mid-download ("Premature end of Content-Length delimited
+      # message body"); ForgeGradle 2.x has no built-in retry, so we retry the
+      # whole build instead. Partial downloads never enter Gradle's module cache,
+      # so a retry starts clean.
+      # We capture the FULL gradle output to a log file (and stream it to the
+      # console via tee) so a complete log is available even when the build
+      # fails. If all attempts fail, the step exits non-zero (job turns red) but
+      # the follow-up report/log-upload steps run with `if: always()` so logs
+      # are never lost. Each version uses its own Gradle Wrapper (Gradle 4.9
+      # for 1.12.2, Gradle 2.14.1 for 1.8.9) pinned via ForgeGradle 2.x.
       - name: Build with Gradle
         id: gradle
         run: |
+          set +e
           mkdir -p /tmp/linclient-logs
-          ./gradlew build --no-daemon --console=plain 2>&1 | tee "/tmp/linclient-logs/build-${{ matrix.mc }}.log"
-          echo "BUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          log="/tmp/linclient-logs/build-${{ matrix.mc }}.log"
+          exit=1
+          for attempt in 1 2 3; do
+            echo "::group::Build attempt $attempt/3 (MC ${{ matrix.mc }})"
+            ./gradlew build --no-daemon --console=plain 2>&1 | tee "$log"
+            exit=${PIPESTATUS[0]}
+            echo "::endgroup::"
+            if [ "$exit" = "0" ]; then
+              echo "BUILD_EXIT=0" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "Attempt $attempt failed (gradle exit $exit)."
+            if [ "$attempt" -lt 3 ]; then
+              echo "Retrying in 15s..."
+              sleep 15
+            fi
+          done
+          echo "BUILD_EXIT=$exit" >> "$GITHUB_ENV"
+          exit "$exit"
 
       # Always generate a human-readable report in the job Summary so the result
       # (and the failure reason) is visible on the webpage without downloading.

@@ -7,6 +7,13 @@ buildscript {
     dependencies {
         classpath "net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT"
     }
+    // Forge's buildscript SNAPSHOTs have been frozen in time for years. Re-validating
+    // them against the maven on every CI run only invites transient download failures
+    // ("Premature end of Content-Length delimited message body"), so pin them for a year.
+    configurations.classpath {
+        resolutionStrategy.cacheChangingModulesFor 365, 'days'
+        resolutionStrategy.cacheDynamicVersionsFor 365, 'days'
+    }
 }
 
 apply plugin: "net.minecraftforge.gradle.forge"
