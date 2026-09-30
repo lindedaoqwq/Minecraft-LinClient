@@ -48,7 +48,7 @@ public class ModConfig {
                 || id.equals("crosshair") || id.equals("sprint") || id.equals("potions")
                 || id.equals("combo") || id.equals("reach")) return true;
         // Engine-level optimisations that were measured to be pure wins; on by default.
-        if (id.equals("signtext") || id.equals("armorcache")) return true;
+        if (id.equals("signtext") || id.equals("armorcache") || id.equals("motionblur")) return true;
         return false;
     }
 

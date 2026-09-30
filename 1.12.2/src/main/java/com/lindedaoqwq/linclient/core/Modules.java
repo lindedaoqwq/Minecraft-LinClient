@@ -139,6 +139,10 @@ public class Modules {
         add("armorcache", "render", "Armor Texture Cache", "\u76d4\u7532\u8d34\u56fe\u7f13\u5b58",
                 "\u7f13\u5b58\u76d4\u7532\u8d34\u56fe\u8def\u5f84\uff0c\u51cf\u5c11\u6bcf\u5e27\u5b57\u7b26\u4e32\u5f00\u9500",
                 "Memoise armour texture paths");
+        add("motionblur", "render", "Motion Blur", "\u52a8\u6001\u6a21\u7cca",
+                "\u6e38\u6208\u5185\u8fd0\u52a8\u6a21\u7cca\uff0c\u5feb\u901f\u79fb\u52a8\u65f6\u753b\u9762\u4ea7\u751f\u62d6\u5f71",
+                "In-game motion blur / trailing on movement")
+                .set(Setting.slider("motionblur.amount", "\u6a21\u7cca\u5f3a\u5ea6", "Blur amount", 0.1F, 0.85F, 0.05F, 0.5F));
         add("hud", "other", "HUD Master", "HUD \u603b\u5f00\u5173",
                 "\u6240\u6709 HUD \u5143\u7d20\u7684\u603b\u5f00\u5173", "Master toggle for all HUD items");
         // Optimisation modules are force-enabled (not listed in the GUI):

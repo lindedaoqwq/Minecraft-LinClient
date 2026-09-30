@@ -1,8 +1,10 @@
 package com.lindedaoqwq.linclient.gui;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
+import com.lindedaoqwq.linclient.util.BlurUtils;
 import com.lindedaoqwq.linclient.util.FontUtils;
 import com.lindedaoqwq.linclient.util.RenderUtils;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -12,6 +14,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.util.glu.Project;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +35,14 @@ public class LinMainMenu extends GuiScreen {
         }
     }
 
-    private static final ResourceLocation PANORAMA =
-            new ResourceLocation("textures/gui/title/background/panorama_0.png");
+    private static final ResourceLocation[] PAN = new ResourceLocation[]{
+            new ResourceLocation("textures/gui/title/background/panorama_0.png"),
+            new ResourceLocation("textures/gui/title/background/panorama_1.png"),
+            new ResourceLocation("textures/gui/title/background/panorama_2.png"),
+            new ResourceLocation("textures/gui/title/background/panorama_3.png"),
+            new ResourceLocation("textures/gui/title/background/panorama_4.png"),
+            new ResourceLocation("textures/gui/title/background/panorama_5.png"),
+    };
 
     private final List<Btn> buttons = new ArrayList<Btn>();
     private boolean zh;
@@ -65,14 +74,9 @@ public class LinMainMenu extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         FontRenderer fr = FontUtils.get();
 
-        // ---- vanilla panorama backdrop, slowly drifting, darkened ----
-        mc.getTextureManager().bindTexture(PANORAMA);
-        GL11.glColor4f(1F, 1F, 1F, 1F);
-        float t = (Minecraft.getSystemTime() % 60000L) / 60000F;
-        int u = (int) (96D + Math.sin(t * Math.PI * 2.0D) * 40D);
-        Gui.drawScaledCustomSizeModalRect(0, 0, u, u / 2, 128, 128, width, height, 256, 256);
-        // dark veil for readability
-        RenderUtils.drawRect(0, 0, width, height, 0x6E0A1220);
+        // ---- vanilla-style rotating 6-face panorama, then soft blur ----
+        drawPanorama(width, height);
+        BlurUtils.renderBlur(width, height, 0x0A1428, 0.42F, 6F);
 
         // ---- Title: "LinClient" in the bundled HarmonyOS Sans Black ----
         GL11.glPushMatrix();
@@ -121,6 +125,48 @@ public class LinMainMenu extends GuiScreen {
                 return;
             }
         }
+    }
+
+    // ---- rotating skybox panorama: 6 cube faces viewed from inside, yaw drifting ----
+    private void drawPanorama(int w, int h) {
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        Project.gluPerspective(90.0F, (float) w / (float) h, 0.1F, 10.0F);
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        GlStateManager.disableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.disableCull();
+        GlStateManager.enableTexture2D();
+        float yaw = (Minecraft.getSystemTime() % 30000L) / 30000F * 360F;
+        GlStateManager.rotate(yaw, 0.0F, 1.0F, 0.0F);
+        for (int k = 0; k < 6; k++) {
+            mc.getTextureManager().bindTexture(PAN[k]);
+            GlStateManager.pushMatrix();
+            if (k < 4) GlStateManager.rotate(k * 90.0F, 0.0F, 1.0F, 0.0F);
+            else if (k == 4) GlStateManager.rotate(90.0F, 1.0F, 0.0F, 0.0F);
+            else GlStateManager.rotate(-90.0F, 1.0F, 0.0F, 0.0F);
+            drawWall(-1.0F, -1.0F, 2.0F, 2.0F, -1.0F);
+            GlStateManager.popMatrix();
+        }
+        GlStateManager.popMatrix();
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
+        GlStateManager.popMatrix();
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.depthMask(true);
+        GlStateManager.enableDepth();
+        GlStateManager.enableCull();
+    }
+
+    private void drawWall(float x, float y, float w, float h, float z) {
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(0, 0); GL11.glVertex3f(x, y, z);
+        GL11.glTexCoord2f(1, 0); GL11.glVertex3f(x + w, y, z);
+        GL11.glTexCoord2f(1, 1); GL11.glVertex3f(x + w, y + h, z);
+        GL11.glTexCoord2f(0, 1); GL11.glVertex3f(x, y + h, z);
+        GL11.glEnd();
     }
 
     private void act(int a) {
