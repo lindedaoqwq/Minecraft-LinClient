@@ -47,7 +47,7 @@ public class ModConfig {
         return id.equals("fps") || id.equals("ping") || id.equals("cps")
                 || id.equals("coordinates") || id.equals("direction") || id.equals("keystrokes")
                 || id.equals("togglesprint") || id.equals("potion")
-                || id.equals("fullbright") || id.equals("crosshair") || id.equals("motionblur");
+                || id.equals("fullbright") || id.equals("crosshair");
     }
 
     public static void sync() {

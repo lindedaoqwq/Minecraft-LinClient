@@ -131,10 +131,6 @@ public class Modules {
                 "\u53d7\u51fb\u65f6\u5c4f\u5e55\u8fb9\u7f18\u6cdb\u7ea2", "Red screen flash when you take damage")
                 .set(Setting.color("\u989c\u8272", "Colour", 0xFFE02F2F))
                 .set(Setting.slider("hitcolor.alpha", "\u5f3a\u5ea6", "Strength", 10, 100, 5, 45));
-        add("motionblur", "render", "Motion Blur", "\u52a8\u6001\u6a21\u7cca",
-                "\u6e38\u620f\u5185\u8fd0\u52a8\u6a21\u7cca\uff0c\u5feb\u901f\u79fb\u52a8\u65f6\u753b\u9762\u4ea7\u751f\u62d6\u5f71",
-                "In-game motion blur / trailing on movement")
-                .set(Setting.slider("motionblur.amount", "\u6a21\u7cca\u5f3a\u5ea6", "Blur amount", 0.1F, 0.85F, 0.05F, 0.5F));
         add("zoom", "render", "Zoom", "\u5feb\u901f\u7f29\u653e",
                 "\u6309\u4f4f\u5feb\u6377\u952e\u7f29\u5c0f\u89c6\u91ce", "Hold a key to zoom in")
                 .set(Setting.slider("zoom.zoom", "\u7f29\u653e\u500d\u7387", "Zoom level", 2, 10, 1, 5));

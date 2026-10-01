@@ -9,7 +9,6 @@ import com.lindedaoqwq.linclient.gui.LinMainMenu;
 import com.lindedaoqwq.linclient.hud.Hud;
 import com.lindedaoqwq.linclient.hud.HudEditorScreen;
 import com.lindedaoqwq.linclient.state.ClientState;
-import com.lindedaoqwq.linclient.util.MotionBlur;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiButton;
@@ -70,11 +69,6 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onOverlayPre(RenderGameOverlayEvent.Pre event) {
-        // One motion-blur pass per frame, before the HUD is drawn on top.
-        if (event.type == RenderGameOverlayEvent.ElementType.ALL) {
-            MotionBlur.render(Minecraft.getMinecraft().displayWidth,
-                    Minecraft.getMinecraft().displayHeight);
-        }
         if (Modules.on("crosshair") && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
             event.setCanceled(true);
         }
@@ -96,7 +90,6 @@ public class ClientEvents {
             ClientState.distance = 0;
             ClientState.hasPrev = false;
             com.lindedaoqwq.linclient.hooks.EngineHooks.clearCaches();
-            com.lindedaoqwq.linclient.util.MotionBlur.reset();
         }
 
         // Sync the config language once from the game language.

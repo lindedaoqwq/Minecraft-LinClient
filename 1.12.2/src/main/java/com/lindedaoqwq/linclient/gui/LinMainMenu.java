@@ -1,7 +1,6 @@
 package com.lindedaoqwq.linclient.gui;
 
 import com.lindedaoqwq.linclient.config.ModConfig;
-import com.lindedaoqwq.linclient.util.BlurUtils;
 import com.lindedaoqwq.linclient.util.FontUtils;
 import com.lindedaoqwq.linclient.util.RenderUtils;
 import net.minecraft.client.renderer.GlStateManager;
@@ -74,9 +73,10 @@ public class LinMainMenu extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         FontRenderer fr = FontUtils.get();
 
-        // ---- vanilla-style rotating 6-face panorama, then soft blur ----
+        // ---- vanilla-style rotating 6-face panorama ----
         drawPanorama(width, height);
-        BlurUtils.renderBlur(width, height, 0x0A1428, 0.42F, 6F);
+        // Soft darkening veil (no FBO/shader blur: keeps the menu safe on GL translation layers).
+        RenderUtils.drawRect(0, 0, width, height, 0x2A0A1428);
 
         // ---- Title: "LinClient" in the bundled HarmonyOS Sans Black ----
         GL11.glPushMatrix();
