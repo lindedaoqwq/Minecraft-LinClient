@@ -188,7 +188,7 @@ public final class Hud {
             lines = new ArrayList<String>();
             lines.add(placeholder("potion"));
         }
-        if (lines == null) return;
+        if (lines == null || lines.isEmpty()) return;
         int[] p = posOf(mc, "potion");
         int y = p[1];
         for (String s : lines) {
