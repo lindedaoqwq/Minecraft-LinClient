@@ -8,9 +8,6 @@ import com.lindedaoqwq.linclient.util.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.StatCollector;
 import java.util.ArrayList;
@@ -28,8 +25,9 @@ public final class Hud {
 
     /** All on-screen module ids, in render order. */
     private static final String[] IDS = {
-            "pingfps", "cps", "coords", "combo", "reach", "damage", "potions",
-            "targethud", "keystrokes", "armor", "crosshair"
+            "fps", "cps", "ping", "memory", "coordinates", "direction",
+            "speedometer", "playtime", "serveraddress", "keystrokes",
+            "combo", "reach", "potion"
     };
 
     private static int sw, sh;
@@ -42,11 +40,13 @@ public final class Hud {
         sh = sr.getScaledHeight();
         BOUNDS.clear();
         for (String id : IDS) {
-            if (id.equals("crosshair")) continue;   // center-locked, no drag box
+            if (id.equals("keystrokes")) continue;   // has its own box renderer
+            if (id.equals("potion")) continue;        // multi-line right column
             if (!editMode && !Modules.on(id)) continue;
             renderModule(mc, id, editMode);
         }
-        if (!editMode && Modules.on("crosshair")) renderCrosshair(mc);
+        if (editMode || Modules.on("keystrokes")) renderKeystrokesModule(mc, editMode);
+        if (editMode || Modules.on("potion")) renderPotionModule(mc, editMode);
     }
 
     /** Position for a module: custom (stored relative, resolution-independent) or default anchor. */
@@ -55,25 +55,26 @@ public final class Hud {
         if (rel != null) {
             return new int[]{clamp((int) (rel[0] * sw), 0, sw - 20), clamp((int) (rel[1] * sh), 0, sh - 12)};
         }
-        if (id.equals("pingfps") || id.equals("cps") || id.equals("coords")) {
-            int y = 10;
-            if (id.equals("cps")) y = Modules.on("pingfps") ? 21 : 10;
-            if (id.equals("coords")) y = (Modules.on("pingfps") ? 21 : 10) + (Modules.on("cps") ? 11 : 0);
-            return new int[]{8, y};
+        // Left column: fps / cps / ping / memory, stacked.
+        String[] left = {"fps", "cps", "ping", "memory"};
+        int y = 10;
+        for (String s : left) {
+            if (s.equals(id)) return new int[]{8, y};
+            if (Modules.on(s)) y += 11;
         }
-        if (id.equals("combo") || id.equals("reach") || id.equals("damage") || id.equals("potions")) {
-            int y = 10;
-            if (id.equals("reach")) y = Modules.on("combo") ? 21 : 10;
-            if (id.equals("damage")) y = (Modules.on("combo") ? 21 : 10) + (Modules.on("reach") ? 11 : 0);
-            if (id.equals("potions")) {
-                y = 10 + (Modules.on("combo") ? 11 : 0) + (Modules.on("reach") ? 11 : 0)
-                        + (Modules.on("damage") ? 11 : 0);
-            }
-            return new int[]{-1, y};   // -1 = right-aligned
+        // Right column: coordinates / direction / speedometer / playtime / serveraddress.
+        String[] right = {"coordinates", "direction", "speedometer", "playtime", "serveraddress"};
+        int ry = 10;
+        for (String s : right) {
+            if (s.equals(id)) return new int[]{-1, ry};   // -1 = right-aligned
+            if (Modules.on(s)) ry += 11;
         }
-        if (id.equals("targethud")) return new int[]{sw / 2 - 65, 26};
+        // Combat read-outs sit above the right column's top.
+        if (id.equals("combo")) return new int[]{-1, 10};
+        if (id.equals("reach")) return new int[]{-1, Modules.on("combo") ? 21 : 10};
         if (id.equals("keystrokes")) return new int[]{8, sh - 78};
-        if (id.equals("armor")) return new int[]{-2, -2};   // -2 = bottom-right
+        if (id.equals("potion")) return new int[]{-1, 10};
+        if (id.equals("crosshair")) return new int[]{sw / 2, sh / 2};
         return new int[]{8, 10};
     }
 
@@ -81,45 +82,15 @@ public final class Hud {
 
     private static void renderModule(Minecraft mc, String id, boolean edit) {
         int[] p = posOf(mc, id);
-        if (id.equals("keystrokes")) {
-            int[] wh = renderKeystrokes(mc, p[0], p[1]);
-            bounds(id, p[0], p[1], wh[0], wh[1], edit);
-        } else if (id.equals("armor")) {
-            int[] xy = p[0] == -2 ? new int[]{sw - 8 - 80, sh - 8 - 16} : p;
-            int[] wh = renderArmor(mc, xy[0], xy[1], edit);
-            bounds(id, xy[0], xy[1], wh[0], wh[1], edit);
-        } else if (id.equals("targethud")) {
-            EntityLivingBase t = mc.pointedEntity instanceof EntityLivingBase ? (EntityLivingBase) mc.pointedEntity : null;
-            if (t != null || edit) {
-                int[] wh = renderTarget(mc, p[0], p[1], t);
-                bounds(id, p[0], p[1], wh[0], wh[1], edit);
-            }
-        } else if (id.equals("potions")) {
-            EntityPlayerSP pl = mc.thePlayer;
-            List<String> lines = pl != null ? potionLines(pl.getActivePotionEffects()) : null;
-            if (edit && (lines == null || lines.isEmpty())) {
-                lines = new ArrayList<String>();
-                lines.add(placeholder("potions"));
-            }
-            if (lines == null) return;
-            int y = p[1];
-            for (String s : lines) {
-                int w = mc.fontRendererObj.getStringWidth(s) + 2;
-                mc.fontRendererObj.drawStringWithShadow(s, sw - 8 - w, y, 0xFFFFFF);
-                bounds(id, sw - 8 - w, y, w, 11, edit);
-                y += 11;
-            }
-        } else {
-            String s = lineText(mc, id);
-            if (s == null) {
-                if (!edit) return;
-                s = placeholder(id);
-            }
-            int w = mc.fontRendererObj.getStringWidth(s) + 2;
-            int x = p[0] == -1 ? sw - 8 - w : p[0];
-            mc.fontRendererObj.drawStringWithShadow(s, x, p[1], 0xFFFFFF);
-            bounds(id, x, p[1], w, 11, edit);
+        String s = lineText(mc, id);
+        if (s == null) {
+            if (!edit) return;
+            s = placeholder(id);
         }
+        int w = mc.fontRendererObj.getStringWidth(s) + 2;
+        int x = p[0] == -1 ? sw - 8 - w : p[0];
+        mc.fontRendererObj.drawStringWithShadow(s, x, p[1], 0xFFFFFF);
+        bounds(id, x, p[1], w, 11, edit);
     }
 
     /** Bilingual preview label used in HUD edit mode when live data is unavailable. */
@@ -139,15 +110,44 @@ public final class Hud {
 
     private static String lineText(Minecraft mc, String id) {
         EntityPlayerSP p = mc.thePlayer;
-        if (id.equals("pingfps")) {
-            return "\u00A7bFPS: \u00A7f" + ClientState.fps + "  \u00A7bPing: \u00A7f" + ClientState.ping + "ms";
+        if (id.equals("fps")) {
+            return "\u00A7bFPS: \u00A7f" + ClientState.fps;
         }
         if (id.equals("cps")) {
             return "\u00A7bCPS: \u00A7f" + ClientState.leftCps() + " | " + ClientState.rightCps();
         }
-        if (id.equals("coords") && p != null) {
-            return "\u00A7bXYZ: \u00A7f" + (int) p.posX + " " + (int) p.posY + " " + (int) p.posZ
-                    + " " + dirOf(p.rotationYaw);
+        if (id.equals("ping")) {
+            return "\u00A7bPing: \u00A7f" + ClientState.ping + "ms";
+        }
+        if (id.equals("memory")) {
+            Runtime rt = Runtime.getRuntime();
+            long used = (rt.totalMemory() - rt.freeMemory()) / 1048576L;
+            long max = rt.maxMemory() / 1048576L;
+            int pct = max > 0 ? (int) (used * 100L / max) : 0;
+            int warn = (int) ModConfig.value("memory.warn", 85F);
+            String c = pct >= warn ? "\u00A7c" : "\u00A7b";
+            return c + "Mem: \u00A7f" + used + "/" + max + "MB";
+        }
+        if (id.equals("coordinates") && p != null) {
+            return "\u00A7bXYZ: \u00A7f" + (int) p.posX + " " + (int) p.posY + " " + (int) p.posZ;
+        }
+        if (id.equals("direction") && p != null) {
+            return "\u00A7bDir: \u00A7f" + dirOf(p.rotationYaw);
+        }
+        if (id.equals("speedometer")) {
+            int flag = (int) ModConfig.value("speedometer.scale", 1F);
+            double v = ClientState.speed * Math.max(1, flag);
+            return String.format("\u00A7bSpeed: \u00A7f%.2f b/s", v);
+        }
+        if (id.equals("playtime")) {
+            long sec = Math.max(0L, (System.currentTimeMillis() - ClientState.sessionStart) / 1000L);
+            long h = sec / 3600L, m = (sec % 3600L) / 60L, s = sec % 60L;
+            return String.format("\u00A7bTime: \u00A7f%02d:%02d:%02d", h, m, s);
+        }
+        if (id.equals("serveraddress")) {
+            net.minecraft.client.multiplayer.ServerData sd = mc.getCurrentServerData();
+            if (sd == null || sd.serverIP == null || sd.serverIP.isEmpty()) return null;
+            return "\u00A7bServer: \u00A7f" + sd.serverIP;
         }
         long now = System.currentTimeMillis();
         if (id.equals("combo")) {
@@ -162,21 +162,13 @@ public final class Hud {
             }
             return null;
         }
-        if (id.equals("damage")) {
-            float secs = Math.max(1F, ModConfig.value("damage.time", 2F));
-            if (ClientState.lastDamageDealtTime > 0 && now < ClientState.lastDamageDealtTime + (long) (secs * 1000F)
-                    && ClientState.lastDamageDealt > 0) {
-                return String.format("\u00A7cDMG: \u00A7f-%.1f", ClientState.lastDamageDealt);
-            }
-            return null;
-        }
         return null;
     }
 
     private static String dirOf(float yaw) {
         yaw = ((yaw % 360F) + 360F) % 360F;
         String[] dirs = {"S", "SW", "W", "NW", "N", "NE", "E", "SE"};
-        return "\u00A77[" + dirs[(int) ((yaw + 22.5F) / 45F) & 7] + "]\u00A7f";
+        return dirs[(int) ((yaw + 22.5F) / 45F) & 7];
     }
 
     private static List<String> potionLines(Collection<PotionEffect> effects) {
@@ -189,24 +181,31 @@ public final class Hud {
         return out;
     }
 
-    private static int[] renderTarget(Minecraft mc, int x, int y, EntityLivingBase t) {
-        int pw = 130, ph = 30;
-        if (t == null) {   // edit-mode placeholder
-            Theme.roundRect(x, y, pw, ph, 0xB3141420);
-            mc.fontRendererObj.drawStringWithShadow("Target HUD", x + 6, y + 4, 0xFFFFFF);
-            return new int[]{pw, ph};
+    private static void renderPotionModule(Minecraft mc, boolean edit) {
+        EntityPlayerSP pl = mc.thePlayer;
+        List<String> lines = pl != null ? potionLines(pl.getActivePotionEffects()) : null;
+        if (edit && (lines == null || lines.isEmpty())) {
+            lines = new ArrayList<String>();
+            lines.add(placeholder("potion"));
         }
-        String name = (t.isOnSameTeam(mc.thePlayer) ? "\u00A7a\u2605 " : "") + t.getName();
-        Theme.roundRect(x, y, pw, ph, 0xB3141420);
-        mc.fontRendererObj.drawStringWithShadow(name, x + 6, y + 4, 0xFFFFFF);
-        float hp = Math.max(0F, t.getHealth()), max = Math.max(1F, t.getMaxHealth());
-        int barW = pw - 12;
-        RenderUtils.drawRect(x + 6, y + 18, barW, 5, 0xFF333344);
-        float frac = Math.min(1F, hp / max);
-        // Vanilla-style red health bar (colour customisable via right-click).
-        int col = ModConfig.color("targethud", 0xFFE02F2F);
-        RenderUtils.drawRect(x + 6, y + 18, (int) (barW * frac), 5, col);
-        return new int[]{pw, ph};
+        if (lines == null) return;
+        int[] p = posOf(mc, "potion");
+        int y = p[1];
+        for (String s : lines) {
+            int w = mc.fontRendererObj.getStringWidth(s) + 2;
+            int x = sw - 8 - w;
+            mc.fontRendererObj.drawStringWithShadow(s, x, y, 0xFFFFFF);
+            y += 11;
+        }
+        // Single drag box covering all lines.
+        bounds("potion", sw - 8 - mc.fontRendererObj.getStringWidth(lines.get(0)) - 2,
+                p[1], mc.fontRendererObj.getStringWidth(lines.get(0)) + 2, 11 * lines.size(), edit);
+    }
+
+    private static void renderKeystrokesModule(Minecraft mc, boolean edit) {
+        int[] p = posOf(mc, "keystrokes");
+        int[] wh = renderKeystrokes(mc, p[0], p[1]);
+        bounds("keystrokes", p[0], p[1], wh[0], wh[1], edit);
     }
 
     private static int[] renderKeystrokes(Minecraft mc, int x, int y) {
@@ -237,47 +236,5 @@ public final class Hud {
             mx += mw[i] + g;
         }
         return new int[]{b * 3 + g * 2, b * 3 + g * 2};
-    }
-
-    private static int[] renderArmor(Minecraft mc, int x, int y, boolean edit) {
-        EntityPlayerSP p = mc.thePlayer;
-        if (p == null) {
-            // Main-menu preview box so the module stays draggable.
-            Theme.roundRect(x, y, 80, 18, 0xB3141420);
-            mc.fontRendererObj.drawStringWithShadow(placeholder("armor"), x + 3, y + 5, 0xFFFFFF);
-            return new int[]{80, 18};
-        }
-        int slot = 14, pad = 2;
-        RenderHelper.enableGUIStandardItemLighting();
-        for (int i = 0; i < 4; i++) {
-            drawItem(mc, p.getCurrentArmor(3 - i), x + i * (slot + pad), y, slot);
-        }
-        drawItem(mc, p.inventory.getCurrentItem(), x + 4 * (slot + pad), y, slot);
-        RenderHelper.disableStandardItemLighting();
-        for (int i = 0; i < 4; i++) {
-            ItemStack st = p.getCurrentArmor(3 - i);
-            if (st != null && st.isItemStackDamageable()) {
-                int pct = (int) (100F * (st.getMaxDamage() - st.getItemDamage()) / st.getMaxDamage());
-                String s = pct + "%";
-                mc.fontRendererObj.drawStringWithShadow(s,
-                        x + i * (slot + pad) + 1, y + slot + 2, pct > 40 ? 0x8FFF8F : 0xFF7F6F);
-            }
-        }
-        return new int[]{(slot + pad) * 5, slot + 2};
-    }
-
-    private static void drawItem(Minecraft mc, ItemStack st, int x, int y, int slot) {
-        if (st == null) return;
-        Theme.roundRect(x, y, slot + 2, slot + 2, 0xB3141420);
-        mc.getRenderItem().renderItemAndEffectIntoGUI(st, x + 1, y + 1);
-        mc.getRenderItem().renderItemOverlayIntoGUI(mc.fontRendererObj, st, x + 1, y + 1, null);
-    }
-
-    private static void renderCrosshair(Minecraft mc) {
-        int cx = sw / 2, cy = sh / 2;
-        int col = ModConfig.color("crosshair", 0xFF3AA6F0);
-        int r = Math.max(2, (int) ModConfig.value("crosshair.size", 4F));
-        RenderUtils.drawRect(cx - r, cy, r * 2 + 1, 1, col);
-        RenderUtils.drawRect(cx, cy - r, 1, r * 2 + 1, col);
     }
 }

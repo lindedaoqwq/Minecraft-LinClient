@@ -42,14 +42,12 @@ public class ModConfig {
         lang = c.get("client", "lang", "zh_CN").getString();
     }
 
+    /** Modules enabled the first time the client runs. Everything stays user-togglable. */
     private static boolean defaultOf(String id) {
-        if (id.equals("hud") || id.equals("keystrokes") || id.equals("cps") || id.equals("pingfps")
-                || id.equals("coords") || id.equals("armor") || id.equals("targethud")
-                || id.equals("crosshair") || id.equals("sprint") || id.equals("potions")
-                || id.equals("combo") || id.equals("reach")) return true;
-        // Engine-level optimisations that were measured to be pure wins; on by default.
-        if (id.equals("signtext") || id.equals("armorcache") || id.equals("motionblur")) return true;
-        return false;
+        return id.equals("fps") || id.equals("ping") || id.equals("cps")
+                || id.equals("coordinates") || id.equals("direction") || id.equals("keystrokes")
+                || id.equals("togglesprint") || id.equals("potion")
+                || id.equals("fullbright") || id.equals("crosshair") || id.equals("motionblur");
     }
 
     public static void sync() {

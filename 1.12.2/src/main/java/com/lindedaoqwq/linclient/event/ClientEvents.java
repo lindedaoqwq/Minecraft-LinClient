@@ -13,7 +13,6 @@ import com.lindedaoqwq.linclient.util.MotionBlur;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiOptions;
@@ -23,72 +22,38 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.MouseEvent;
-import net.minecraftforge.client.event.RenderBlockOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.fml.client.FMLClientHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
-import java.util.Map;
 
 /** All client-side Forge events. Client-only; nothing touches server behaviour. */
 public class ClientEvents {
     private float originalGamma = 0.5f;
     private boolean fullbrightActive = false;
 
-    // Visual toggle state.
-    private boolean bobbingChanged = false;
-
-    // Smart FPS (unfocused throttle).
-    private static Field fpsLimitField = null;
-    private static boolean fpsLimitDiscovered = false;
-    private int savedFpsLimit;
-    private boolean focusLow = false;
-
-    // Reconnect.
-    private long reconnectAt = 0;
-    private GuiScreen lastDisconnectScreen = null;
-
-    // Damage tracking.
+    // Damage tracking (combo / reach read-outs).
     private Entity pendingTarget = null;
     private float pendingHealth = -1F;
 
-    // World-switch detection: resets session stats so nothing (ping/combo/reach)
-    // leaks from a multiplayer server into singleplayer.
+    // World-switch detection: resets session stats so nothing leaks across worlds.
     private WorldClient lastWorld = null;
 
-    // Freelook.
-    private float realYaw, realPitch, flYaw, flPitch;
-    private boolean flActive = false;
+    // Sprint reset: force a fresh sprint press so sent attack resets sprint state.
+    private boolean sprintResetPending = false;
 
     private boolean langSynced = false;
 
     private static final int BTN_LINCLIENT = 997;
-
-    private static Field findFpsLimitField(Class<?> c) {
-        if (fpsLimitDiscovered) return fpsLimitField;
-        fpsLimitDiscovered = true;
-        for (String name : new String[]{"framerateLimit", "limitFramerate", "frameRateLimit", "frameLimit", "maxFps"}) {
-            try {
-                Field f = c.getDeclaredField(name);
-                f.setAccessible(true);
-                fpsLimitField = f;
-                break;
-            } catch (Exception ignored) { }
-        }
-        return fpsLimitField;
-    }
 
     @SubscribeEvent
     public void onRenderGui(RenderGameOverlayEvent.Post event) {
@@ -98,7 +63,7 @@ public class ClientEvents {
             EngineHooks.onFrame();
         }
         Minecraft mc = Minecraft.getMinecraft();
-        if (!ClientState.modActive || !ClientState.hudEnabled || !Modules.on("hud")) return;
+        if (!ClientState.modActive || !ClientState.hudEnabled) return;
         if (mc.currentScreen != null || mc.gameSettings.showDebugInfo) return;
         Hud.render(mc, false);
     }
@@ -128,8 +93,8 @@ public class ClientEvents {
             ClientState.comboExpire = 0;
             ClientState.reach = 0;
             ClientState.reachExpire = 0;
-            ClientState.lastDamageDealt = 0;
-            ClientState.lastDamageDealtTime = 0;
+            ClientState.distance = 0;
+            ClientState.hasPrev = false;
             com.lindedaoqwq.linclient.hooks.EngineHooks.clearCaches();
             com.lindedaoqwq.linclient.util.MotionBlur.reset();
         }
@@ -157,7 +122,7 @@ public class ClientEvents {
 
         applyMovement(mc);
         applyVisuals(mc);
-        tickReconnect(mc);
+        tickModules(mc);
         tickDamageTracking(mc);
         updatePing(mc);
     }
@@ -171,18 +136,45 @@ public class ClientEvents {
     }
 
     private void applyMovement(Minecraft mc) {
-        if (mc.player == null) return;
-        // Auto sprint.
+        EntityPlayerSP p = mc.player;
+        if (p == null) return;
+        // Toggle sprint: hold the sprint key while moving forward.
         KeyBinding sprint = mc.gameSettings.keyBindSprint;
-        boolean wantSprint = Modules.on("sprint") && mc.currentScreen == null
+        boolean wantSprint = Modules.on("togglesprint") && mc.currentScreen == null
                 && mc.gameSettings.keyBindForward.isKeyDown()
-                && !mc.player.isSneaking() && !mc.player.capabilities.isFlying;
+                && !p.isSneaking() && !p.capabilities.isFlying;
         KeyBinding.setKeyBindState(sprint.getKeyCode(), wantSprint);
+
+        // Sprint reset: re-press sprint next tick so a hit resets momentum (W-tap helper).
+        if (sprintResetPending) {
+            sprintResetPending = false;
+            KeyBinding.setKeyBindState(sprint.getKeyCode(), false);
+        }
+    }
+
+    private void tickModules(Minecraft mc) {
+        EntityPlayerSP p = mc.player;
+        if (p == null) return;
+        if (!ClientState.hasPrev) {
+            ClientState.prevX = p.posX;
+            ClientState.prevY = p.posY;
+            ClientState.prevZ = p.posZ;
+            ClientState.hasPrev = true;
+            return;
+        }
+        double dx = p.posX - ClientState.prevX;
+        double dz = p.posZ - ClientState.prevZ;
+        double dh = Math.sqrt(dx * dx + dz * dz);
+        ClientState.distance += dh;
+        // Per-tick horizontal delta -> blocks per second (20 ticks/s).
+        ClientState.speed = dh * 20.0;
+        ClientState.prevX = p.posX;
+        ClientState.prevY = p.posY;
+        ClientState.prevZ = p.posZ;
     }
 
     private void applyVisuals(Minecraft mc) {
         if (mc.world == null) return;
-
         // Fullbright.
         if (Modules.on("fullbright")) {
             if (!fullbrightActive) {
@@ -193,89 +185,6 @@ public class ClientEvents {
         } else if (fullbrightActive) {
             mc.gameSettings.gammaSetting = originalGamma;
             fullbrightActive = false;
-        }
-
-        // Minimal view bobbing (vanilla off; restore when toggled off).
-        if (Modules.on("bobbing") && mc.gameSettings.viewBobbing) {
-            mc.gameSettings.viewBobbing = false;
-            bobbingChanged = true;
-        } else if (!Modules.on("bobbing") && bobbingChanged) {
-            mc.gameSettings.viewBobbing = true;
-            bobbingChanged = false;
-        }
-
-        // Weather off.
-        if (Modules.on("weather")) {
-            mc.world.setRainStrength(0.0f);
-            mc.world.setThunderStrength(0.0f);
-        }
-
-        // Smart FPS: throttle when unfocused (reflection for version-safe field access).
-        Field fl = findFpsLimitField(mc.gameSettings.getClass());
-        boolean active = Display.isActive();
-        if (Modules.on("smartfps") && fl != null) {
-            try {
-                if (!active) {
-                    if (!focusLow) {
-                        savedFpsLimit = (Integer) fl.get(mc.gameSettings);
-                        focusLow = true;
-                    }
-                    fl.set(mc.gameSettings, 10);
-                } else if (focusLow) {
-                    fl.set(mc.gameSettings, savedFpsLimit);
-                    focusLow = false;
-                }
-            } catch (Exception ignored) { }
-        } else if (focusLow && fl != null) {
-            try { fl.set(mc.gameSettings, savedFpsLimit); } catch (Exception ignored) { }
-            focusLow = false;
-        }
-
-        // Dynamic FPS (force-enabled): only lowers render distance on sustained low FPS,
-        // never touches the user's own setting otherwise.
-        if (Modules.on("dynfps")) {
-            int fps = ClientState.fps;
-            int cur = mc.gameSettings.renderDistanceChunks;
-            if (fps > 0 && fps < 30 && cur > 4) {
-                mc.gameSettings.renderDistanceChunks = 4;
-            }
-        }
-    }
-
-    private void tickReconnect(Minecraft mc) {
-        if (!(Modules.on("reconnect")) || mc.currentScreen == null
-                || !(mc.currentScreen instanceof GuiDisconnected)) {
-            lastDisconnectScreen = null;
-            return;
-        }
-        if (mc.currentScreen != lastDisconnectScreen) {
-            lastDisconnectScreen = mc.currentScreen;
-            reconnectAt = System.currentTimeMillis()
-                    + (long) (ModConfig.value("reconnect.delay", 5F) * 1000F);
-            return;
-        }
-        if (System.currentTimeMillis() < reconnectAt) return;
-        reconnectAt = System.currentTimeMillis()
-                + (long) (ModConfig.value("reconnect.delay", 5F) * 1000F);
-        try {
-            ServerDataBox.connect(mc.currentScreen);
-        } catch (Throwable ignored) { }
-    }
-
-    /** Reflection helper: finds the ServerData stored inside GuiDisconnected and reconnects. */
-    private static class ServerDataBox {
-        static void connect(GuiScreen screen) throws Exception {
-            for (Field f : screen.getClass().getDeclaredFields()) {
-                if (f.getType().getSimpleName().equals("ServerData")) {
-                    f.setAccessible(true);
-                    Object data = f.get(screen);
-                    if (data != null) {
-                        FMLClientHandler.instance().connectToServer(screen,
-                                (net.minecraft.client.multiplayer.ServerData) data);
-                    }
-                    return;
-                }
-            }
         }
     }
 
@@ -293,8 +202,6 @@ public class ClientEvents {
         }
         float now = ((EntityLivingBase) pendingTarget).getHealth();
         if (now < pendingHealth - 0.01F) {
-            ClientState.lastDamageDealt = pendingHealth - now;
-            ClientState.lastDamageDealtTime = nowMs;
             ClientState.combo++;
             ClientState.comboExpire = nowMs + (long) (ModConfig.value("combo.time", 2F) * 1000F);
             ClientState.reachExpire = nowMs + (long) (ModConfig.value("reach.time", 2F) * 1000F);
@@ -313,15 +220,17 @@ public class ClientEvents {
         ClientState.reachExpire = System.currentTimeMillis() + (long) (ModConfig.value("reach.time", 2F) * 1000F);
         pendingTarget = event.getTarget();
         pendingHealth = ((EntityLivingBase) event.getTarget()).getHealth();
+        if (Modules.on("sprintreset")) sprintResetPending = true;
     }
 
-    /** Getting hit resets the combo counter. */
+    /** Getting hit resets the combo counter and triggers the hit-colour flash. */
     @SubscribeEvent
     public void onLivingHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.player != null && event.getEntity() == mc.player) {
             ClientState.combo = 0;
             ClientState.comboExpire = 0;
+            ClientState.lastDamageTakenTime = System.currentTimeMillis();
         }
     }
 
@@ -348,33 +257,6 @@ public class ClientEvents {
     }
 
     @SubscribeEvent
-    public void onRenderTick(TickEvent.RenderTickEvent event) {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.player == null) { flActive = false; return; }
-        boolean down = Modules.on("freelook") && KeyBindings.FREELOOK.isKeyDown();
-        if (event.phase == TickEvent.Phase.START) {
-            if (down) {
-                if (!flActive) {
-                    flActive = true;
-                    realYaw = mc.player.rotationYaw;
-                    realPitch = mc.player.rotationPitch;
-                    flYaw = realYaw;
-                    flPitch = realPitch;
-                }
-                mc.player.rotationYaw = flYaw;
-                mc.player.rotationPitch = flPitch;
-            }
-        } else if (flActive) {
-            if (down) {
-                mc.player.rotationYaw = realYaw;
-                mc.player.rotationPitch = realPitch;
-            } else {
-                flActive = false;
-            }
-        }
-    }
-
-    @SubscribeEvent
     public void onMouse(MouseEvent event) {
         int btn = event.getButton();
         boolean state = event.isButtonstate();
@@ -394,7 +276,7 @@ public class ClientEvents {
 
     @SubscribeEvent
     public void onBlockHighlight(DrawBlockHighlightEvent event) {
-        if (!Modules.on("blockoutline")) return;
+        if (!Modules.on("blockoverlay")) return;
         Minecraft mc = Minecraft.getMinecraft();
         RayTraceResult mop = event.getTarget();
         if (mop == null || mop.typeOfHit != RayTraceResult.Type.BLOCK
@@ -409,8 +291,8 @@ public class ClientEvents {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glLineWidth(Math.max(1F, ModConfig.value("blockoutline.width", 2F)));
-        float[] rgb = argb(ModConfig.color("blockoutline", 0xFF3BA9F0));
+        GL11.glLineWidth(Math.max(1F, ModConfig.value("blockoverlay.width", 2F)));
+        float[] rgb = argb(ModConfig.color("blockoverlay", 0xFF3BA9F0));
         GL11.glColor4f(rgb[0], rgb[1], rgb[2], 0.9F);
         GL11.glTranslated(-dx, -dy, -dz);
         GL11.glBegin(GL11.GL_LINES);
@@ -441,13 +323,6 @@ public class ClientEvents {
     /** ARGB -> {r,g,b} floats in [0,1]. */
     private static float[] argb(int c) {
         return new float[]{((c >> 16) & 0xFF) / 255F, ((c >> 8) & 0xFF) / 255F, (c & 0xFF) / 255F};
-    }
-
-    @SubscribeEvent
-    public void onBlockOverlay(RenderBlockOverlayEvent event) {
-        if (event.getOverlayType() == RenderBlockOverlayEvent.OverlayType.FIRE && Modules.on("lowfire")) {
-            event.setCanceled(true);
-        }
     }
 
     @SubscribeEvent

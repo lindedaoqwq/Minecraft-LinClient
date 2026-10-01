@@ -430,7 +430,11 @@ public class ClickGuiScreen extends GuiScreen {
         GL11.glColor4f(r, g, b, a);
         GL11.glLineWidth(2F);
         GL11.glBegin(GL11.GL_LINES);
-        if (id.equals("combat")) {                 // crossed swords
+        if (id.equals("hud")) {                    // monitor / dashboard
+            vertex(2, 3, 14, 3);  vertex(14, 3, 14, 11);
+            vertex(14, 11, 2, 11); vertex(2, 11, 2, 3);
+            vertex(6, 14, 10, 14); vertex(8, 11, 8, 14);
+        } else if (id.equals("combat")) {          // crossed swords
             vertex(3, 3, 13, 13); vertex(13, 3, 3, 13);
             vertex(3, 6, 6, 3);   vertex(10, 13, 13, 10);
         } else if (id.equals("movement")) {        // arrow right

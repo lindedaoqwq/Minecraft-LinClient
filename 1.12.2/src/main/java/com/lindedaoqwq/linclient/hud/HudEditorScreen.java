@@ -37,8 +37,9 @@ public class HudEditorScreen extends GuiScreen {
         if (dragging == null) {
             // Pick the topmost module whose bounds contain the point.
             Map<String, int[]> b = Hud.BOUNDS;
-            String[] order = {"crosshair", "targethud", "keystrokes", "armor", "potions",
-                    "damage", "reach", "combo", "coords", "cps", "pingfps"};
+            String[] order = {"keystrokes", "potion", "combo", "reach", "coordinates",
+                    "direction", "speedometer", "playtime", "serveraddress", "memory",
+                    "ping", "cps", "fps"};
             for (String id : order) {
                 int[] r = b.get(id);
                 if (r == null) continue;

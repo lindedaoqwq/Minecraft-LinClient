@@ -19,30 +19,23 @@ public class ClientState {
     public static double prevX = 0, prevY = 0, prevZ = 0;
     public static boolean hasPrev = false;
 
+    // Session
+    public static long sessionStart = System.currentTimeMillis();   // playtime module
+
     // Input / clicks
     public static boolean leftHeld = false, rightHeld = false;
     public static final ArrayDeque<Long> leftClickTimes = new ArrayDeque<>();
     public static final ArrayDeque<Long> rightClickTimes = new ArrayDeque<>();
 
-    // Health / damage
-    public static float lastPlayerHealth = 0;
-    public static boolean wasDead = false;
-    public static float lastDamageTaken = 0;
+    // Damage taken (hitcolour screen flash)
     public static long lastDamageTakenTime = 0;
-
-    // Death
-    public static long lastDeathTime = 0;
-    public static String lastDeathDim = "";
-    public static int lastDeathX = 0, lastDeathY = 0, lastDeathZ = 0;
 
     // Combat
     public static int combo = 0;
     public static long comboExpire = 0;
     public static float reach = 0;            // last attack distance (blocks)
-    public static long reachExpire = 0;       // when reach/damage display expires
+    public static long reachExpire = 0;       // when reach display expires
     public static int ping = 0;               // self latency, ms
-    public static float lastDamageDealt = 0;
-    public static long lastDamageDealtTime = 0;
 
     // FPS is self-counted every rendered frame and computed once per second. This is reliable and
     // identical across versions (the old reflection read of debugFPS could get stuck at 1).
